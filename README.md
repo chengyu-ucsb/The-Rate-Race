@@ -2,7 +2,7 @@
 
 A short browser game about warehouse work, algorithmic management, and the rate that always rises.
 
-**Play it:** https://YOURUSERNAME.github.io/rate-race/
+**Play it:** https://chengyu-ucsb.github.io/rate-race/
 
 You play one condensed week as a picker at a fictional fulfillment center. A handheld scanner tells you what to pick, where it is, and how long you have. Between timed picking sessions, you make choices about pace, breaks, safety, and your life outside the warehouse. Three numbers follow you all week: your rate, your body, and the flags on your file. There are four ways the week can end, and choices about solidarity and helping others shade how each ending plays out. The game takes about 10 to 12 minutes and works well on phones.
 

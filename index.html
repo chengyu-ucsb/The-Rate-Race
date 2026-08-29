@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Rate Race: A Warehouse Week</title>
+<style>
+  :root{
+    --concrete:#1E2126;
+    --steel:#2C3138;
+    --steel-lt:#3A3F47;
+    --hazard:#F5A800;
+    --paper:#EDE9DE;
+    --dim:#9BA1AA;
+    --lcd-bg:#101C10;
+    --lcd:#8FE388;
+    --alert:#E8503A;
+    --ok:#69C46B;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{background:var(--concrete);}
+  body{
+    font-family:system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background:linear-gradient(180deg,#23262C 0%, #1B1E23 100%);
+    color:var(--paper);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:0 0 48px 0;
+  }
+  .console{width:100%; max-width:640px;}
+
+  /* ---------- hazard tape ---------- */
+  .tape{
+    height:12px;
+    background:repeating-linear-gradient(45deg, var(--hazard) 0 14px, #17181B 14px 28px);
+    border-top:2px solid #14161A;
+    border-bottom:2px solid #14161A;
+  }
+
+  /* ---------- HUD ---------- */
+  .hud{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    background:var(--steel);
+    padding:12px 16px;
+    border-bottom:2px solid #14161A;
+    position:sticky; top:0; z-index:10;
+  }
+  .hud .stat{flex:1; min-width:0; text-align:center;}
+  .hud .lbl{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Courier New",monospace;
+    font-size:10px; letter-spacing:0.14em; color:var(--dim); text-transform:uppercase;
+  }
+  .hud .val{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Courier New",monospace;
+    font-size:17px; font-weight:700; color:var(--paper); margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .hud .val.warn{color:var(--hazard);}
+  .hud .val.bad{color:var(--alert);}
+
+  /* ---------- stage ---------- */
+  .stage{padding:22px 18px 10px;}
+  @media (min-width:520px){ .stage{padding:28px 26px 12px;} }
+
+  .card{
+    background:var(--steel);
+    border:2px solid #14161A;
+    border-left:6px solid var(--hazard);
+    padding:20px 20px 22px;
+    margin-bottom:18px;
+    animation:slidein .35s ease both;
+  }
+  .card.system{border-left-color:var(--alert);}
+  .card.quiet{border-left-color:var(--steel-lt);}
+  @keyframes slidein{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+
+  .kicker{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--hazard); margin-bottom:8px;
+  }
+  .card.system .kicker{color:var(--alert);}
+  .card h2{
+    font-family:Impact,"Arial Narrow Bold","Arial Black",sans-serif;
+    font-weight:400; letter-spacing:0.02em;
+    font-size:24px; text-transform:uppercase; color:var(--paper);
+    margin-bottom:10px; line-height:1.1;
+  }
+  .card p{font-size:15.5px; line-height:1.55; color:var(--paper); margin-bottom:10px;}
+  .card p.dim{color:var(--dim); font-size:13.5px;}
+  .card p:last-of-type{margin-bottom:0;}
+
+  .choices{margin-top:18px; display:flex; flex-direction:column; gap:10px;}
+  button.choice{
+    font-family:inherit; font-size:15px; text-align:left;
+    background:transparent; color:var(--paper);
+    border:2px solid var(--hazard);
+    padding:13px 16px; cursor:pointer;
+    transition:background .12s, color .12s;
+  }
+  button.choice:hover, button.choice:focus-visible{background:var(--hazard); color:#14161A;}
+  button.choice small{display:block; font-size:12.5px; opacity:.75; margin-top:3px;}
+  button:focus-visible{outline:2px dashed var(--hazard); outline-offset:3px;}
+
+  /* ---------- scanner ---------- */
+  .scanner{
+    background:#33383F;
+    border:3px solid #14161A;
+    border-radius:14px 14px 22px 22px;
+    padding:14px 14px 18px;
+    margin-bottom:18px;
+    box-shadow:0 6px 0 #14161A;
+    animation:slidein .35s ease both;
+  }
+  .scanner .brand{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:10px; letter-spacing:0.22em; color:var(--dim);
+    text-transform:uppercase; text-align:center; margin-bottom:8px;
+  }
+  .screen{
+    position:relative;
+    background:var(--lcd-bg);
+    border:2px solid #0A120A;
+    padding:14px 14px 16px;
+    min-height:96px;
+  }
+  .screen::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px);
+  }
+  .screen .line{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Courier New",monospace;
+    font-size:14px; line-height:1.6; color:var(--lcd);
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .screen .line.big{font-size:17px; font-weight:700;}
+  .timerbar-wrap{height:10px; background:#0A120A; margin-top:12px; border:2px solid #14161A;}
+  .timerbar{height:100%; width:100%; background:var(--lcd);}
+  .timerbar.low{background:var(--alert);}
+
+  .bins{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px;
+  }
+  @media (max-width:420px){ .bins{grid-template-columns:repeat(3,1fr);} }
+  button.bin{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:14px; font-weight:700;
+    background:var(--steel-lt); color:var(--hazard);
+    border:2px solid #14161A; border-bottom-width:4px;
+    padding:16px 4px; cursor:pointer;
+  }
+  button.bin:hover, button.bin:focus-visible{background:#464C55;}
+  button.bin.hit{background:var(--ok); color:#14161A;}
+  button.bin.err{background:var(--alert); color:#14161A;}
+  .bins.locked button.bin{pointer-events:none; opacity:.85;}
+
+  .shelf-note{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:11px; color:var(--dim); text-align:center; margin-top:10px;
+    letter-spacing:0.1em; text-transform:uppercase;
+  }
+
+  /* ---------- title & debrief ---------- */
+  .title-wrap{text-align:center; padding:38px 10px 8px;}
+  .title-wrap h1{
+    font-family:Impact,"Arial Narrow Bold","Arial Black",sans-serif;
+    font-weight:400; font-size:64px; line-height:.95;
+    text-transform:uppercase; color:var(--paper); letter-spacing:0.01em;
+  }
+  .title-wrap h1 span{color:var(--hazard); display:block;}
+  .title-wrap .sub{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:13px; color:var(--dim); margin-top:14px; letter-spacing:0.08em;
+  }
+  .divider{margin:22px auto; max-width:180px;}
+
+  .debrief h3{
+    font-family:Impact,"Arial Narrow Bold","Arial Black",sans-serif;
+    font-weight:400; font-size:19px; text-transform:uppercase;
+    color:var(--hazard); margin:18px 0 6px; letter-spacing:0.03em;
+  }
+  .debrief ul{margin:8px 0 8px 20px;}
+  .debrief li{font-size:15px; line-height:1.55; margin-bottom:8px;}
+
+  .footer{
+    text-align:center; padding:26px 20px 8px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:11px; color:var(--dim); letter-spacing:0.08em; line-height:1.8;
+  }
+
+  .flash{animation:flashbg .4s ease;}
+  @keyframes flashbg{0%{background:#464C55;} 100%{background:var(--lcd-bg);}}
+
+  @media (prefers-reduced-motion: reduce){
+    .card,.scanner{animation:none;}
+    button.choice{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="console">
+  <div class="tape" aria-hidden="true"></div>
+  <div class="hud" id="hud" hidden>
+    <div class="stat"><div class="lbl">Day</div><div class="val" id="hud-day">Mon</div></div>
+    <div class="stat"><div class="lbl">Time</div><div class="val" id="hud-time">6:45a</div></div>
+    <div class="stat"><div class="lbl">Rate</div><div class="val" id="hud-rate">--</div></div>
+    <div class="stat"><div class="lbl">Body</div><div class="val" id="hud-body">7/10</div></div>
+    <div class="stat"><div class="lbl">Flags</div><div class="val" id="hud-flags">0/3</div></div>
+  </div>
+  <div class="stage" id="stage" aria-live="polite"></div>
+  <div class="footer">
+    COMM 3008 · Organizational Communication · University of Cincinnati<br>
+    A fictional simulation for class discussion. Inspired by ABC News Story Lab's
+    "The Amazon Race" (2019) and the Financial Times' "Uber Game" (2017).
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   THE RATE RACE: a warehouse week
+   Original news-game-style simulation for COMM 3008 (Week 14).
+   All company names, characters, and dialogue are fictional.
+   ============================================================ */
+
+const S = {
+  dayIdx: 0,
+  body: 7,
+  flags: 0,
+  totLogs: 0,          // "time off task" logs
+  risky: 0,            // safety corners cut
+  rounds: [],          // pct per pick round
+  choices: [],         // strings for the debrief
+  pace: null,          // 'jog' | 'walk'
+  tip: false,          // Dee's scanning tip
+  pushHard: false,
+  headStart: 0,        // pre-credited picks next round
+  injured: false,
+  quit: false,
+  released: false,
+  ended: false,
+  clock: "6:45a"
+};
+
+const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
+const stage = document.getElementById("stage");
+const hud = document.getElementById("hud");
+
+const ITEMS = [
+  "phone case, clear", "yoga mat, teal", "AA batteries, 36 pk",
+  "dog toy, squeaky taco", "LED strip lights", "protein powder, vanilla",
+  "phone charger, 6 ft", "shower caddy", "puzzle, 1000 pc",
+  "desk lamp, black", "water bottle, 32 oz", "gaming mouse",
+  "org comm textbook, used", "air fryer liners", "wall hooks, 20 pk",
+  "kettle, electric", "hair ties, 100 ct", "notebook, grid"
+];
+const BINS = ["A-1","A-2","A-3","A-4","B-1","B-2","B-3","B-4","C-1","C-2","C-3","C-4"];
+
+/* ---------------- helpers ---------------- */
+
+function updateHUD(){
+  document.getElementById("hud-day").textContent = DAYS[S.dayIdx] || "Fri";
+  document.getElementById("hud-time").textContent = S.clock;
+  const rate = avgRate();
+  const rEl = document.getElementById("hud-rate");
+  rEl.textContent = rate === null ? "--" : rate + "%";
+  rEl.className = "val" + (rate !== null && rate < 75 ? " bad" : rate !== null && rate < 90 ? " warn" : "");
+  const bEl = document.getElementById("hud-body");
+  bEl.textContent = S.body + "/10";
+  bEl.className = "val" + (S.body <= 3 ? " bad" : S.body <= 5 ? " warn" : "");
+  const fEl = document.getElementById("hud-flags");
+  fEl.textContent = S.flags + "/3";
+  fEl.className = "val" + (S.flags >= 2 ? " bad" : S.flags === 1 ? " warn" : "");
+}
+
+function avgRate(){
+  if (!S.rounds.length) return null;
+  return Math.round(S.rounds.reduce((a,b)=>a+b,0) / S.rounds.length);
+}
+
+function setBody(delta){
+  S.body = Math.max(0, Math.min(10, S.body + delta));
+  updateHUD();
+}
+
+function addFlag(){
+  S.flags++;
+  updateHUD();
+}
+
+function clearStage(){ stage.innerHTML = ""; }
+
+function scrollTop(){ window.scrollTo({top:0, behavior:"auto"}); }
+
+/* A narrative card. choices: [{label, note, fn}] */
+function card(opts){
+  clearStage(); scrollTop();
+  const c = document.createElement("div");
+  c.className = "card" + (opts.variant ? " " + opts.variant : "");
+  let html = "";
+  if (opts.kicker) html += `<div class="kicker">${opts.kicker}</div>`;
+  if (opts.title)  html += `<h2>${opts.title}</h2>`;
+  (opts.body || []).forEach(p => { html += `<p${p.dim ? ' class="dim"' : ''}>${p.t || p}</p>`; });
+  c.innerHTML = html;
+  const wrap = document.createElement("div");
+  wrap.className = "choices";
+  (opts.choices || []).forEach(ch => {
+    const b = document.createElement("button");
+    b.className = "choice";
+    b.innerHTML = ch.label + (ch.note ? `<small>${ch.note}</small>` : "");
+    b.addEventListener("click", () => ch.fn());
+    wrap.appendChild(b);
+  });
+  c.appendChild(wrap);
+  stage.appendChild(c);
+  const first = wrap.querySelector("button");
+  if (first) first.focus({preventScroll:true});
+}
+
+/* A scanner message screen with a single continue action */
+function scannerMsg(lines, btnLabel, fn){
+  clearStage(); scrollTop();
+  const sc = document.createElement("div");
+  sc.className = "scanner";
+  sc.innerHTML = `
+    <div class="brand">SWIFTLINE UNIT 0447 · HANDHELD</div>
+    <div class="screen"><div class="line" id="sc-lines"></div></div>`;
+  stage.appendChild(sc);
+  const el = sc.querySelector("#sc-lines");
+  el.textContent = lines.join("\n");
+  const wrap = document.createElement("div");
+  wrap.className = "choices";
+  const b = document.createElement("button");
+  b.className = "choice";
+  b.textContent = btnLabel;
+  b.addEventListener("click", fn);
+  wrap.appendChild(b);
+  stage.appendChild(wrap);
+  b.focus({preventScroll:true});
+}
+
+/* ---------------- the pick mini-game ---------------- */
+
+function effectiveSeconds(base){
+  let s = base;
+  if (S.pace === "jog") s += 0.4;
+  if (S.tip) s += 0.4;
+  if (S.pushHard) s += 0.3;
+  if (S.body <= 3) s -= 0.6;
+  return Math.max(2.4, s);
+}
+
+function pickRound(cfg, done){
+  /* cfg: {picks, seconds, target, label} */
+  clearStage(); scrollTop();
+  const secs = effectiveSeconds(cfg.seconds);
+  let made = S.headStart; S.headStart = 0;
+  let i = 0;
+  let answered = false;
+  let timeoutId = null;
+  let lowId = null;
+
+  const sc = document.createElement("div");
+  sc.className = "scanner";
+  sc.innerHTML = `
+    <div class="brand">SWIFTLINE UNIT 0447 · PICK MODE</div>
+    <div class="screen" id="pick-screen">
+      <div class="line" id="pick-status"></div>
+      <div class="line big" id="pick-target"></div>
+    </div>
+    <div class="timerbar-wrap"><div class="timerbar" id="tbar"></div></div>
+    <div class="bins" id="bins"></div>
+    <div class="shelf-note">Tap the bin the scanner asks for</div>`;
+  stage.appendChild(sc);
+
+  const statusEl = sc.querySelector("#pick-status");
+  const targetEl = sc.querySelector("#pick-target");
+  const barEl = sc.querySelector("#tbar");
+  const binsEl = sc.querySelector("#bins");
+  const screenEl = sc.querySelector("#pick-screen");
+
+  BINS.forEach(code => {
+    const b = document.createElement("button");
+    b.className = "bin";
+    b.textContent = code;
+    b.dataset.code = code;
+    b.addEventListener("click", () => handleClick(b));
+    binsEl.appendChild(b);
+  });
+
+  let currentBin = null;
+
+  function nextPick(){
+    if (i >= cfg.picks){ return finish(); }
+    i++;
+    answered = false;
+    currentBin = BINS[Math.floor(Math.random() * BINS.length)];
+    const item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    statusEl.textContent = `${cfg.label} · PICK ${i}/${cfg.picks} · MADE ${made}`;
+    targetEl.textContent = `${item}\n>> BIN ${currentBin}`;
+    screenEl.classList.remove("flash"); void screenEl.offsetWidth; screenEl.classList.add("flash");
+    binsEl.classList.remove("locked");
+    /* reset + run timer bar */
+    barEl.style.transition = "none";
+    barEl.style.width = "100%";
+    barEl.classList.remove("low");
+    void barEl.offsetWidth;
+    barEl.style.transition = `width ${secs}s linear`;
+    barEl.style.width = "0%";
+    clearTimeout(lowId);
+    lowId = setTimeout(() => { if (!answered) barEl.classList.add("low"); }, secs * 650);
+    timeoutId = setTimeout(() => { if (!answered){ answered = true; miss(); } }, secs * 1000);
+  }
+
+  function handleClick(btn){
+    if (answered) return;
+    if (btn.dataset.code === currentBin){
+      answered = true;
+      clearTimeout(timeoutId);
+      made++;
+      btn.classList.add("hit");
+      binsEl.classList.add("locked");
+      setTimeout(() => { btn.classList.remove("hit"); nextPick(); }, 260);
+    } else {
+      btn.classList.add("err");
+      binsEl.classList.add("locked");
+      setTimeout(() => {
+        btn.classList.remove("err");
+        if (!answered) binsEl.classList.remove("locked");
+      }, 450);
+    }
+  }
+
+  function miss(){
+    targetEl.textContent = ">> PICK TIMED OUT";
+    binsEl.classList.add("locked");
+    setTimeout(nextPick, 550);
+  }
+
+  function finish(){
+    const pct = Math.min(120, Math.round((made / cfg.target) * 100));
+    S.rounds.push(pct);
+    updateHUD();
+    done({made, pct, target: cfg.target});
+  }
+
+  updateHUD();
+  nextPick();
+}
+
+/* Automated coaching after a weak round. Calls next() either way. */
+function coachingCheck(result, next){
+  if (result.pct < 75){
+    addFlag();
+    if (S.flags >= 3) return releaseEnding();
+    scannerMsg([
+      "MESSAGE FROM: PERFORMANCE SYSTEM",
+      "",
+      "This is an automatically generated notice.",
+      `Your last session rate was ${result.pct}% of target.`,
+      "A coaching record has been added to your file.",
+      "No reply is needed. No reply is possible.",
+      "",
+      `FLAGS ON FILE: ${S.flags} OF 3`
+    ], "Put the scanner back in the holster", next);
+  } else {
+    next();
+  }
+}
+
+/* ---------------- DAY 1 · MONDAY ---------------- */
+
+function intro(){
+  clearStage();
+  hud.hidden = true;
+  const t = document.createElement("div");
+  t.className = "title-wrap";
+  t.innerHTML = `
+    <h1>The Rate <span>Race</span></h1>
+    <div class="sub">ONE WEEK AS A WAREHOUSE PICKER.<br>CAN YOU MAKE RATE?</div>
+    <div class="tape divider" aria-hidden="true"></div>`;
+  stage.appendChild(t);
+  const c = document.createElement("div");
+  c.className = "card quiet";
+  c.innerHTML = `
+    <p>You've been hired as a seasonal picker at Swiftline Fulfillment Center OH-2,
+    a warehouse the size of fourteen football fields off I-75. Pickers are the people
+    who make online shopping work: when someone orders a phone charger at 2 AM, a picker
+    walks the shelves, finds it, and scans it into a bin so it can be packed and shipped.</p>
+    <p>Your output target is called your rate. Making rate is how you keep the job.
+    Ten-hour shifts, four days plus mandatory peak days. The pay is the best you've
+    found this month.</p>
+    <p class="dim">This is a fictional simulation built for COMM 3008. The company and every
+    person in it are invented. The working conditions are composites drawn from a decade of
+    published reporting on warehouse work, including readings assigned in this course.</p>`;
+  const wrap = document.createElement("div");
+  wrap.className = "choices";
+  const b = document.createElement("button");
+  b.className = "choice";
+  b.textContent = "Badge in";
+  b.addEventListener("click", day1);
+  wrap.appendChild(b);
+  c.appendChild(wrap);
+  stage.appendChild(c);
+}
+
+function day1(){
+  hud.hidden = false;
+  S.dayIdx = 0; S.clock = "6:45a"; updateHUD();
+  card({
+    kicker: "Monday · Orientation",
+    title: "The scanner is the boss",
+    body: [
+      "Phones go in a locker at the door. A team lead hands you a vest and a handheld scanner.",
+      "\"This tells you what to pick, which bin it's in, and how long you've got. The system logs everything, including time off task. Nobody has to watch you. The data does that.\""
+    ],
+    choices: [
+      { label: "\"Who sets the rate?\"",
+        note: "It seems like a fair question.",
+        fn: () => { S.choices.push("You asked who sets the rate. The lead shrugged: \"The system. It adjusts.\""); day1Pace(); } },
+      { label: "Nod and take the scanner",
+        note: "First day. Keep your head down.",
+        fn: () => { S.choices.push("You took the scanner without asking questions."); day1Pace(); } }
+    ]
+  });
+}
+
+function day1Pace(){
+  S.clock = "7:10a"; updateHUD();
+  card({
+    kicker: "Monday · Zone C",
+    title: "Moving with purpose",
+    body: [
+      "Your lead calls the expected pace \"moving with purpose.\" Watching the floor, it looks like something between a walk and a jog, held for ten hours.",
+      "How do you move between bins?"
+    ],
+    choices: [
+      { label: "Match the half-jog",
+        note: "More seconds per pick. Your body pays for it daily.",
+        fn: () => { S.pace = "jog"; S.choices.push("You matched the half-jog all week."); day1Round(); } },
+      { label: "Walk fast, but walk",
+        note: "Save your knees. The clock won't wait.",
+        fn: () => { S.pace = "walk"; S.choices.push("You walked. Fast, but you walked."); day1Round(); } }
+    ]
+  });
+}
+
+function day1Round(){
+  S.clock = "8:00a"; updateHUD();
+  scannerMsg([
+    "ASSIGNMENT: ZONE C · PICK MODE",
+    "SESSION TARGET: 6 UNITS",
+    "",
+    "Scan when ready."
+  ], "Start picking", () => {
+    pickRound({picks: 8, seconds: 6.0, target: 6, label: "MON"}, r => {
+      S.clock = "12:30p"; updateHUD();
+      card({
+        kicker: "Monday · Midday",
+        title: r.pct >= 100 ? "You made rate" : "The number follows you",
+        body: [
+          `You picked ${r.made} against a target of ${r.target}. That's ${r.pct}%.`,
+          "The number sits in the corner of the scanner screen for the rest of the shift. You catch yourself checking it the way you check a phone."
+        ],
+        choices: [{ label: "Finish the shift", fn: () => coachingCheck(r, day1Night) }]
+      });
+    });
+  });
+}
+
+function day1Night(){
+  if (S.pace === "jog") setBody(-1);
+  S.clock = "6:20p"; updateHUD();
+  card({
+    kicker: "Monday · After",
+    title: "21,000 steps",
+    body: [
+      "Your feet have opinions. Your watch says you walked farther today than you did all last week.",
+      "Your sister texts. Her car is in the shop and she needs a ride to her night shift across town."
+    ],
+    choices: [
+      { label: "Hot shower, ice, bed by nine",
+        note: "Body +2. You'll need it.",
+        fn: () => { setBody(2); S.choices.push("Monday night you chose recovery over everything else."); day2(); } },
+      { label: "Drive her. You're family.",
+        note: "No recovery tonight. Some things matter more.",
+        fn: () => { S.choices.push("Monday night you drove your sister to work instead of resting."); day2(); } }
+    ]
+  });
+}
+
+/* ---------------- DAY 2 · TUESDAY ---------------- */
+
+function day2(){
+  S.dayIdx = 1; S.clock = "6:45a"; setBody(-1);
+  scannerMsg([
+    "NOTICE: ZONE C TARGET UPDATED",
+    "6 UNITS >> 8 UNITS",
+    "",
+    "Targets reflect current facility",
+    "performance. Thank you for being",
+    "part of the Swiftline team."
+  ], "Clip the scanner to your vest", day2Bathroom);
+}
+
+function day2Bathroom(){
+  S.clock = "9:40a"; updateHUD();
+  card({
+    kicker: "Tuesday · Mid-morning",
+    title: "Six minutes, logged",
+    body: [
+      "Two coffees before the shift were a mistake. The nearest restroom is at the far end of the building, a six-minute round trip.",
+      "The scanner logs every minute you're not picking as time off task."
+    ],
+    choices: [
+      { label: "Go. You're a person.",
+        note: "The system logs it. Logs add up.",
+        fn: () => {
+          S.totLogs++;
+          S.choices.push("Tuesday you took the six-minute walk to the restroom, and the system logged it.");
+          scannerMsg([
+            "EVENT LOGGED",
+            "",
+            "TIME OFF TASK: 7 MIN",
+            "CATEGORY: UNSPECIFIED",
+            "",
+            "This event has been added to your",
+            "record. Repeated events may result",
+            "in a performance flag."
+          ], "Keep moving", day2Round);
+        } },
+      { label: "Hold it until lunch",
+        note: "Body -1. The rate stays clean.",
+        fn: () => { setBody(-1); S.choices.push("Tuesday you held it until lunch to keep your time-off-task clean."); day2Round(); } }
+    ]
+  });
+}
+
+function day2Round(){
+  S.clock = "10:15a"; updateHUD();
+  pickRound({picks: 10, seconds: 5.2, target: 8, label: "TUE"}, r => {
+    coachingCheck(r, day2Lunch);
+  });
+}
+
+function day2Lunch(){
+  S.clock = "12:35p"; updateHUD();
+  card({
+    kicker: "Tuesday · Lunch",
+    title: "Thirty minutes, minus the line",
+    body: [
+      "Lunch is thirty minutes, but the security line to leave the floor eats seven of them.",
+      "Dee, twenty years on warehouse floors, waves you over to her table. She has a wrist brace and a look like she's already read your file."
+    ],
+    choices: [
+      { label: "Sit with Dee",
+        note: "She knows things the orientation didn't cover.",
+        fn: () => {
+          S.tip = true;
+          S.choices.push("You ate lunch with Dee. She taught you to read bin codes in pairs, and told you write-ups here come from a computer, not a person.");
+          day3();
+        } },
+      { label: "Eat fast, stretch, breathe",
+        note: "Body +1. You need the quiet.",
+        fn: () => { setBody(1); S.choices.push("You spent Tuesday's lunch alone, stretching in the quiet."); day3(); } }
+    ]
+  });
+}
+
+/* ---------------- DAY 3 · WEDNESDAY ---------------- */
+
+function day3(){
+  S.dayIdx = 2; S.clock = "6:45a"; setBody(-1);
+  card({
+    kicker: "Wednesday · Morning",
+    title: "Your hands know the job now",
+    body: [
+      "Day three. Your knees complain on the stairs and your right wrist clicks, but your hands have learned the scanner. You barely look at it anymore.",
+      "First task: an item on the top steel shelf, well above your reach. The nearest ladder is two aisles away."
+    ],
+    choices: [
+      { label: "Walk for the ladder",
+        note: "The safe way. It costs you a minute you don't have.",
+        fn: () => { S.choices.push("Wednesday you walked two aisles for the ladder."); day3Round(); } },
+      { label: "Step on the racking and reach",
+        note: "Everyone does it. Saves a minute.",
+        fn: () => {
+          S.risky++;
+          S.headStart = 1;
+          S.choices.push("Wednesday you climbed the racking instead of getting the ladder. It worked.");
+          card({
+            kicker: "Wednesday · Zone C",
+            title: "It worked",
+            body: [
+              "Your boot finds the crossbeam, your fingers find the box, and you're down before anyone sees. Your heart is going.",
+              "That's a minute you just bought back. The scanner doesn't know how you got it."
+            ],
+            choices: [{ label: "Keep picking", fn: day3Round }]
+          });
+        } }
+    ]
+  });
+}
+
+function day3Round(){
+  S.clock = "9:30a"; updateHUD();
+  pickRound({picks: 12, seconds: 4.6, target: 10, label: "WED"}, r => {
+    coachingCheck(r, day3Leaderboard);
+  });
+}
+
+function day3Leaderboard(){
+  S.clock = "3:10p"; updateHUD();
+  card({
+    kicker: "Wednesday · Break room",
+    title: "You are #14 of 22",
+    variant: "quiet",
+    body: [
+      "A wall screen in the break room cycles through Zone C's leaderboard. Your badge name sits at fourteenth of twenty-two, between two people you've never spoken to.",
+      "Under it, a banner: PICK OF THE WEEK WINS A $10 CAFETERIA CARD."
+    ],
+    choices: [
+      { label: "Push harder tomorrow",
+        note: "Body -1. But the number will move.",
+        fn: () => { S.pushHard = true; setBody(-1); S.choices.push("The leaderboard got in your head. You decided to push harder."); day4(); } },
+      { label: "It's a screen. Eat your sandwich.",
+        note: "The rate already tells them everything.",
+        fn: () => { S.choices.push("You decided the leaderboard was not your problem."); day4(); } }
+    ]
+  });
+}
+
+/* ---------------- DAY 4 · THURSDAY ---------------- */
+
+function day4(){
+  S.dayIdx = 3; S.clock = "5:50a"; setBody(-1);
+  if (S.body <= 3){
+    card({
+      kicker: "Thursday · Before dawn",
+      title: "Everything hurts",
+      body: [
+        "The alarm goes off and your body votes no. Getting out of bed is a negotiation. You think about the shift, the pace, the screen with your name on it.",
+        "You have three options and none of them are free."
+      ],
+      choices: [
+        { label: "Badge in anyway",
+          note: "The rate doesn't care how you feel.",
+          fn: () => { S.choices.push("Thursday you badged in on an empty tank."); day4Peak(); } },
+        { label: "Call in sick",
+          note: "Body +2. The system flags unplanned absence.",
+          fn: () => {
+            setBody(2); addFlag();
+            if (S.flags >= 3) return releaseEnding();
+            S.choices.push("Thursday you called in sick. Your body thanked you. Your file did not.");
+            day5();
+          } },
+        { label: "Don't go back",
+          note: "Walk away. Plenty do.",
+          fn: quitEnding }
+      ]
+    });
+  } else {
+    day4Peak();
+  }
+}
+
+function day4Peak(){
+  S.clock = "6:45a"; updateHUD();
+  scannerMsg([
+    "PEAK EVENT ACTIVE",
+    "MANDATORY EXTRA TIME: SHIFT +2 HRS",
+    "",
+    "Coverage is required. Exceptions",
+    "must be requested at the HR kiosk."
+  ], "Read it again", () => {
+    card({
+      kicker: "Thursday · Peak",
+      title: "Two more hours",
+      body: [
+        "Peak event. Everyone stays two extra hours, announced by the scanner, effective now.",
+        "You have a night class on Thursdays. It starts at 8."
+      ],
+      choices: [
+        { label: "Stay the extra hours",
+          note: "Body -2. You'll miss class again.",
+          fn: () => { setBody(-2); S.choices.push("Thursday you stayed for mandatory peak hours and missed your night class."); day4Aisle(); } },
+        { label: "Request an exception at the kiosk",
+          note: "The kiosk grants it, and flags it.",
+          fn: () => {
+            addFlag();
+            if (S.flags >= 3) return releaseEnding();
+            S.choices.push("Thursday you used the HR kiosk to leave on time for class. The exception was granted, and flagged.");
+            day4Aisle();
+          } }
+      ]
+    });
+  });
+}
+
+function day4Aisle(){
+  S.clock = "1:20p"; updateHUD();
+  card({
+    kicker: "Thursday · Aisle 40",
+    title: "The gap",
+    body: [
+      "A pallet jack is parked across the aisle while its driver argues with his scanner. There's a gap between the load and the racking, maybe shoulder-wide.",
+      "Going around means the long way. The clock on your current pick is running."
+    ],
+    choices: [
+      { label: "Wait for the aisle to clear",
+        note: "Twenty seconds you'll feel in the rate.",
+        fn: () => { S.choices.push("Thursday you waited for the blocked aisle to clear."); day4Round(); } },
+      { label: "Squeeze through the gap",
+        note: "It's probably fine.",
+        fn: () => {
+          S.risky++;
+          if (S.risky >= 2) return injuryEnding();
+          S.choices.push("Thursday you squeezed past a loaded pallet jack to save twenty seconds.");
+          day4Round();
+        } }
+    ]
+  });
+}
+
+function day4Round(){
+  S.clock = "2:00p"; updateHUD();
+  pickRound({picks: 12, seconds: 4.2, target: 10, label: "THU"}, r => {
+    S.pushHard = false;
+    coachingCheck(r, day5);
+  });
+}
+
+/* ---------------- DAY 5 · FRIDAY ---------------- */
+
+function day5(){
+  S.dayIdx = 4; S.clock = "6:45a"; setBody(-1);
+  card({
+    kicker: "Friday · Peak day",
+    title: "Trucks to the doors",
+    body: [
+      "Friday of a peak week. Trailers are stacked at every dock door and the conveyor hasn't stopped since you badged in.",
+      "One more session. The scanner shows the highest target you've seen."
+    ],
+    choices: [{ label: "Pick up the scanner", fn: day5Round }]
+  });
+}
+
+function day5Round(){
+  S.clock = "8:00a"; updateHUD();
+  pickRound({picks: 14, seconds: 3.9, target: 12, label: "FRI·PEAK"}, r => {
+    if (r.pct < 75){
+      addFlag();
+      if (S.flags >= 3) return releaseEnding();
+    }
+    review();
+  });
+}
+
+function review(){
+  S.clock = "5:05p"; updateHUD();
+  const rate = avgRate();
+  scannerMsg([
+    "WEEKLY REVIEW · AUTO-GENERATED",
+    "",
+    `AVG RATE: ${rate}% OF TARGET`,
+    `FLAGS ON FILE: ${S.flags} OF 3`,
+    "",
+    "Processing outcome..."
+  ], "See the outcome", () => {
+    if (rate >= 85 && S.flags <= 1){
+      keptEnding(rate, true);
+    } else if (rate >= 70){
+      keptEnding(rate, false);
+    } else {
+      releaseEnding(true);
+    }
+  });
+}
+
+/* ---------------- ENDINGS ---------------- */
+
+function keptEnding(rate, strong){
+  S.ended = true;
+  card({
+    kicker: "Friday · 5:07 PM",
+    title: strong ? "Assignment extended" : "Extended, with coaching",
+    body: strong ? [
+      `You made it. ${rate}% average, file mostly clean. The scanner delivers the news the way it delivers everything: ASSIGNMENT EXTENDED.`,
+      "One more line follows before the screen sleeps: NEW ZONE C TARGET EFFECTIVE MONDAY: +10%.",
+      "You met the rate. So the rate moved."
+    ] : [
+      `You survived the week at ${rate}% with ${S.flags} flag${S.flags === 1 ? "" : "s"} on file. The scanner extends your assignment and enrolls you in a \"performance coaching plan,\" which appears to be a longer version of the messages it already sends.`,
+      "One more line follows: NEW ZONE C TARGET EFFECTIVE MONDAY: +10%.",
+      "Next week starts harder than this one did."
+    ],
+    choices: [{ label: "Clock out", fn: debrief }]
+  });
+}
+
+function releaseEnding(fromReview){
+  if (S.ended) return;
+  S.ended = true; S.released = true;
+  card({
+    kicker: fromReview ? "Friday · 5:07 PM" : "A message arrives",
+    title: "Assignment ended",
+    variant: "system",
+    body: [
+      "The scanner buzzes once. YOUR ASSIGNMENT HAS ENDED. PLEASE RETURN YOUR SCANNER AND VEST TO THE KIOSK. THANK YOU FOR BEING PART OF THE SWIFTLINE TEAM.",
+      "No person tells you. No person decided, exactly. Your badge stops working at the turnstile, so a guard has to let you out.",
+      "In the parking lot you can already see the hiring banner by the road: NOW ONBOARDING. START MONDAY."
+    ],
+    choices: [{ label: "Drive home", fn: debrief }]
+  });
+}
+
+function injuryEnding(){
+  if (S.ended) return;
+  S.ended = true; S.injured = true;
+  card({
+    kicker: "Thursday · Aisle 40",
+    title: "The gap closes",
+    variant: "system",
+    body: [
+      "The driver doesn't see you. The load shifts as you're halfway through, and the corner of a crate pins your ankle against the racking. The pain arrives a half-second after the sound.",
+      "At the first-aid station, the incident form loads on a tablet. The first question asks whether you were following standard operating procedure at the time of the incident.",
+      "You were not. The next questions get quieter after that. Light duty pending review, the form says, which everyone on the floor knows is a hallway to the exit."
+    ],
+    choices: [{ label: "Fill out the form", fn: debrief }]
+  });
+}
+
+function quitEnding(){
+  if (S.ended) return;
+  S.ended = true; S.quit = true;
+  S.choices.push("Thursday morning, you didn't badge in. You never went back.");
+  card({
+    kicker: "Thursday · 6:02 AM",
+    title: "You don't go back",
+    body: [
+      "You silence the alarm, and for a long minute you just lie there, listening to your own pulse slow down.",
+      "By Friday your badge is deactivated automatically. Nobody calls. The job posting you answered three weeks ago is still up, word for word.",
+      "Warehouses plan for this. Turnover isn't a failure of the system. It's a feature the system prices in."
+    ],
+    choices: [{ label: "See what this week was", fn: debrief }]
+  });
+}
+
+/* ---------------- DEBRIEF ---------------- */
+
+function debrief(){
+  clearStage(); scrollTop();
+  const rate = avgRate();
+  const chosen = S.choices.slice(0, 6).map(c => `<li>${c}</li>`).join("");
+  const c = document.createElement("div");
+  c.className = "card debrief";
+  c.innerHTML = `
+    <div class="kicker">Debrief · COMM 3008</div>
+    <h2>What you just felt has names</h2>
+    <p>Everything in this simulation is fictional, but none of it is invented from nothing.
+    Timed tasks, ratcheting targets, logged bathroom trips, automated write-ups, and
+    leaderboards all appear across a decade of reporting on warehouse work, including
+    the readings in this course.</p>
+
+    <h3>The stopwatch became a scanner</h3>
+    <p>This is the world Miller's Chapter 2 calls scientific management: Frederick
+    Taylor's program of measuring work, finding the "one best way," and setting output
+    standards from above. Your week was Taylorism with better sensors. The difference is
+    that Taylor needed a man with a stopwatch, and Swiftline needed nothing but the
+    device in your hand.</p>
+
+    <h3>Management without a manager</h3>
+    <p>Notice who disciplined you this week. Not a supervisor. A performance system
+    generated your coaching records, extended your shift, and ended assignments. Scholars
+    call this algorithmic management: control exercised through software that measures,
+    directs, and evaluates work automatically. It layers onto the older forms of control
+    you've studied, and adds one of its own: the target that rises every time you meet it.</p>
+
+    <h3>Your week, on file</h3>
+    <ul>${chosen}</ul>
+    <p>Average rate: ${rate === null ? "no sessions completed" : rate + "% of target"}.
+    Flags: ${S.flags} of 3.${S.injured ? " Ended by injury." : ""}${S.quit ? " Ended by walking away." : ""}${S.released ? " Assignment ended by the system." : ""}</p>
+
+    <h3>Where the people are</h3>
+    <p>Dee is in this story on purpose. Informal knowledge, shared tips, and plain talk at
+    a lunch table are how workers push back on systems that treat them as data points.
+    File her under what Miller's Chapter 6 calls power, control, and resistance, and
+    notice which conversations this week actually helped you.</p>
+
+    <h3>For the discussion forum</h3>
+    <ul>
+      <li>Which principles of classical management (Miller Ch. 2) did you recognize this
+      week, and where did the simulation go beyond anything Taylor imagined?</li>
+      <li>Who, or what, was your supervisor? What changes about organizational control
+      when discipline is automated and no one person decides?</li>
+      <li>The target rose every time you met it. Is that a technology problem, a
+      management choice, or both? If you redesigned one part of this warehouse, what
+      would it be and why?</li>
+    </ul>
+
+    <p class="dim">An original simulation created for COMM 3008 at the University of
+    Cincinnati. Inspired by the news-game genre, especially ABC News Story Lab's
+    "The Amazon Race" (2019) and the Financial Times' "Uber Game" (2017). All names,
+    characters, companies, and events are fictional.</p>`;
+  const wrap = document.createElement("div");
+  wrap.className = "choices";
+  const b = document.createElement("button");
+  b.className = "choice";
+  b.textContent = "Play again";
+  b.addEventListener("click", () => location.reload());
+  wrap.appendChild(b);
+  c.appendChild(wrap);
+  stage.appendChild(c);
+}
+
+intro();
+</script>
+</body>
+</html>

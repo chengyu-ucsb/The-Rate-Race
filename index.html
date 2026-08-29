@@ -60,6 +60,8 @@
   }
   .hud .val.warn{color:var(--hazard);}
   .hud .val.bad{color:var(--alert);}
+  .hud .val.bump{animation:bump .5s ease;}
+  @keyframes bump{0%{transform:scale(1);} 35%{transform:scale(1.3);} 100%{transform:scale(1);}}
 
   /* ---------- stage ---------- */
   .stage{padding:22px 18px 10px;}
@@ -137,9 +139,15 @@
     white-space:pre-wrap; word-break:break-word;
   }
   .screen .line.big{font-size:17px; font-weight:700;}
+  .screen .line.typing::after{
+    content:"\2588"; color:var(--lcd);
+    animation:blink .7s steps(1) infinite;
+  }
+  @keyframes blink{50%{opacity:0;}}
   .timerbar-wrap{height:10px; background:#0A120A; margin-top:12px; border:2px solid #14161A;}
   .timerbar{height:100%; width:100%; background:var(--lcd);}
-  .timerbar.low{background:var(--alert);}
+  .timerbar.low{background:var(--alert); animation:lowblink .32s steps(2,end) infinite;}
+  @keyframes lowblink{50%{opacity:.35;}}
 
   .bins{
     display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px;
@@ -157,25 +165,78 @@
   button.bin.err{background:var(--alert); color:#14161A;}
   .bins.locked button.bin{pointer-events:none; opacity:.85;}
 
+  .conveyor{
+    height:10px; margin-top:14px; border:2px solid #14161A;
+    background:repeating-linear-gradient(90deg,#464C55 0 22px, #2C3138 22px 44px);
+    animation:convey .7s linear infinite;
+  }
+  @keyframes convey{to{background-position-x:-44px;}}
+
   .shelf-note{
     font-family:ui-monospace,Menlo,Consolas,monospace;
     font-size:11px; color:var(--dim); text-align:center; margin-top:10px;
     letter-spacing:0.1em; text-transform:uppercase;
   }
 
+  /* ---------- walking transitions ---------- */
+  .transit{cursor:pointer; animation:slidein .3s ease both;}
+  .strip{
+    position:relative; height:132px; overflow:hidden;
+    border:2px solid #14161A; background:#262A30;
+  }
+  .strip .belt{
+    position:absolute; inset:0; width:calc(100% + 320px);
+    background:
+      linear-gradient(#101216,#101216) 0 118px / 100% 14px repeat-x,
+      repeating-linear-gradient(90deg, transparent 0 16px, #575E67 16px 42px, transparent 42px 54px, #8A7748 54px 76px, transparent 76px 160px) 0 24px / 160px 20px repeat-x,
+      repeating-linear-gradient(90deg, transparent 0 30px, #8A7748 30px 52px, transparent 52px 70px, #575E67 70px 96px, transparent 96px 160px) 0 66px / 160px 20px repeat-x,
+      linear-gradient(#14161A,#14161A) 0 44px / 100% 5px repeat-x,
+      linear-gradient(#14161A,#14161A) 0 86px / 100% 5px repeat-x,
+      repeating-linear-gradient(90deg, #14161A 0 7px, transparent 7px 160px) 0 0 / 160px 100% repeat-x;
+    animation:scrollstrip 1.1s linear infinite;
+  }
+  @keyframes scrollstrip{to{transform:translateX(-160px);}}
+  .walker{
+    position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
+    animation:bob .26s steps(2) infinite;
+  }
+  @keyframes bob{50%{transform:translateX(-50%) translateY(-2px);}}
+  .walker .leg, .walker .arm{transform-box:fill-box; transform-origin:50% 0%;}
+  .walker .leg-l{animation:swingA .5s ease-in-out infinite;}
+  .walker .leg-r{animation:swingB .5s ease-in-out infinite;}
+  .walker .arm-l{animation:swingB .5s ease-in-out infinite;}
+  .walker .arm-r{animation:swingA .5s ease-in-out infinite;}
+  @keyframes swingA{0%,100%{transform:rotate(20deg);} 50%{transform:rotate(-20deg);}}
+  @keyframes swingB{0%,100%{transform:rotate(-20deg);} 50%{transform:rotate(20deg);}}
+  .transit-caption{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    text-align:center; margin-top:14px;
+    font-size:14px; letter-spacing:0.12em; text-transform:uppercase; color:var(--paper);
+    line-height:1.8;
+  }
+  .transit-steps{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    text-align:center; font-size:11px; letter-spacing:0.12em;
+    color:var(--hazard); margin-top:6px; text-transform:uppercase;
+  }
+  .transit-skip{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    text-align:center; font-size:10px; letter-spacing:0.12em;
+    color:var(--dim); margin-top:10px; text-transform:uppercase;
+  }
+
   /* ---------- title & debrief ---------- */
   .title-wrap{text-align:center; padding:38px 10px 8px;}
   .title-wrap h1{
     font-family:Impact,"Arial Narrow Bold","Arial Black",sans-serif;
-    font-weight:400; font-size:64px; line-height:.95;
+    font-weight:400; font-size:60px; line-height:.95;
     text-transform:uppercase; color:var(--paper); letter-spacing:0.01em;
   }
   .title-wrap h1 span{color:var(--hazard); display:block;}
   .title-wrap .sub{
     font-family:ui-monospace,Menlo,Consolas,monospace;
-    font-size:13px; color:var(--dim); margin-top:14px; letter-spacing:0.08em;
+    font-size:13px; color:var(--dim); margin:14px 0 18px; letter-spacing:0.08em;
   }
-  .divider{margin:22px auto; max-width:180px;}
 
   .debrief h3{
     font-family:Impact,"Arial Narrow Bold","Arial Black",sans-serif;
@@ -195,8 +256,12 @@
   @keyframes flashbg{0%{background:#464C55;} 100%{background:var(--lcd-bg);}}
 
   @media (prefers-reduced-motion: reduce){
-    .card,.scanner{animation:none;}
+    .card,.scanner,.transit{animation:none;}
     button.choice{transition:none;}
+    .strip .belt, .walker, .walker .leg, .walker .arm{animation:none;}
+    .conveyor{animation:none;}
+    .timerbar.low{animation:none;}
+    .hud .val.bump{animation:none;}
   }
 </style>
 </head>
@@ -223,22 +288,27 @@
 
 /* ============================================================
    THE RATE RACE: a warehouse week
-   Original news-game-style simulation for COMM 3008 (Week 14).
+   Original news-game-style simulation for COMM 3008.
    All company names, characters, and dialogue are fictional.
    ============================================================ */
+
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const S = {
   dayIdx: 0,
   body: 7,
   flags: 0,
-  totLogs: 0,          // "time off task" logs
-  risky: 0,            // safety corners cut
-  rounds: [],          // pct per pick round
-  choices: [],         // strings for the debrief
-  pace: null,          // 'jog' | 'walk'
-  tip: false,          // Dee's scanning tip
+  risky: 0,
+  rounds: [],
+  choices: [],
+  pace: null,
+  tip: false,
   pushHard: false,
-  headStart: 0,        // pre-credited picks next round
+  helpCost: false,
+  headStart: 0,
+  steps: 0,
+  solidarity: false,
+  mentored: false,
   injured: false,
   quit: false,
   released: false,
@@ -260,21 +330,47 @@ const ITEMS = [
 ];
 const BINS = ["A-1","A-2","A-3","A-4","B-1","B-2","B-3","B-4","C-1","C-2","C-3","C-4"];
 
+const WALKER_SVG = `
+<svg class="walker" viewBox="0 0 32 46" width="58" height="84" aria-hidden="true">
+  <rect x="10" y="0" width="12" height="4" fill="#14161A"/>
+  <rect x="10" y="4" width="12" height="8" fill="#EDE9DE"/>
+  <rect class="arm arm-l" x="5" y="13" width="4" height="11" fill="#EDE9DE"/>
+  <rect class="arm arm-r" x="23" y="13" width="4" height="11" fill="#EDE9DE"/>
+  <rect x="8" y="12" width="16" height="14" fill="#F5A800"/>
+  <rect x="8" y="17" width="16" height="3" fill="#14161A"/>
+  <g class="leg leg-l"><rect x="10" y="26" width="5" height="13" fill="#2C3138"/><rect x="9" y="39" width="7" height="4" fill="#14161A"/></g>
+  <g class="leg leg-r"><rect x="17" y="26" width="5" height="13" fill="#2C3138"/><rect x="16" y="39" width="7" height="4" fill="#14161A"/></g>
+</svg>`;
+
 /* ---------------- helpers ---------------- */
 
+const prevHUD = {};
 function updateHUD(){
-  document.getElementById("hud-day").textContent = DAYS[S.dayIdx] || "Fri";
-  document.getElementById("hud-time").textContent = S.clock;
   const rate = avgRate();
-  const rEl = document.getElementById("hud-rate");
-  rEl.textContent = rate === null ? "--" : rate + "%";
-  rEl.className = "val" + (rate !== null && rate < 75 ? " bad" : rate !== null && rate < 90 ? " warn" : "");
-  const bEl = document.getElementById("hud-body");
-  bEl.textContent = S.body + "/10";
-  bEl.className = "val" + (S.body <= 3 ? " bad" : S.body <= 5 ? " warn" : "");
-  const fEl = document.getElementById("hud-flags");
-  fEl.textContent = S.flags + "/3";
-  fEl.className = "val" + (S.flags >= 2 ? " bad" : S.flags === 1 ? " warn" : "");
+  const vals = {
+    "hud-day": DAYS[S.dayIdx] || "Fri",
+    "hud-time": S.clock,
+    "hud-rate": rate === null ? "--" : rate + "%",
+    "hud-body": S.body + "/10",
+    "hud-flags": S.flags + "/3"
+  };
+  const classes = {
+    "hud-rate": rate !== null && rate < 75 ? "bad" : rate !== null && rate < 90 ? "warn" : "",
+    "hud-body": S.body <= 3 ? "bad" : S.body <= 5 ? "warn" : "",
+    "hud-flags": S.flags >= 2 ? "bad" : S.flags === 1 ? "warn" : ""
+  };
+  for (const id in vals){
+    const el = document.getElementById(id);
+    const changed = prevHUD[id] !== undefined && prevHUD[id] !== vals[id];
+    el.textContent = vals[id];
+    el.className = "val" + (classes[id] ? " " + classes[id] : "");
+    if (changed && !REDUCED){
+      void el.offsetWidth;
+      el.classList.add("bump");
+      el.addEventListener("animationend", () => el.classList.remove("bump"), {once:true});
+    }
+    prevHUD[id] = vals[id];
+  }
 }
 
 function avgRate(){
@@ -282,19 +378,40 @@ function avgRate(){
   return Math.round(S.rounds.reduce((a,b)=>a+b,0) / S.rounds.length);
 }
 
+function fmtSteps(){ return S.steps.toLocaleString("en-US"); }
+
 function setBody(delta){
   S.body = Math.max(0, Math.min(10, S.body + delta));
   updateHUD();
 }
 
-function addFlag(){
-  S.flags++;
-  updateHUD();
-}
+function addFlag(){ S.flags++; updateHUD(); }
 
 function clearStage(){ stage.innerHTML = ""; }
-
 function scrollTop(){ window.scrollTo({top:0, behavior:"auto"}); }
+
+/* Walking transition. captionLines: array of strings. */
+function transit(captionLines, stepsGained, next){
+  S.steps += stepsGained;
+  clearStage(); scrollTop(); updateHUD();
+  const t = document.createElement("div");
+  t.className = "transit";
+  t.setAttribute("role", "button");
+  t.setAttribute("tabindex", "0");
+  t.innerHTML = `
+    <div class="strip"><div class="belt"></div>${WALKER_SVG}</div>
+    <div class="transit-caption">${captionLines.join("<br>")}</div>
+    <div class="transit-steps">Steps so far this week: ${fmtSteps()}</div>
+    <div class="transit-skip">tap to skip</div>`;
+  stage.appendChild(t);
+  let doneCalled = false;
+  const go = () => { if (doneCalled) return; doneCalled = true; next(); };
+  const id = setTimeout(go, REDUCED ? 300 : 1700);
+  const skip = () => { clearTimeout(id); go(); };
+  t.addEventListener("click", skip);
+  t.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") skip(); });
+  t.focus({preventScroll:true});
+}
 
 /* A narrative card. choices: [{label, note, fn}] */
 function card(opts){
@@ -321,6 +438,27 @@ function card(opts){
   if (first) first.focus({preventScroll:true});
 }
 
+/* Typewriter for the scanner LCD */
+function typeInto(el, text, speed){
+  if (REDUCED){ el.textContent = text; return {skip: () => {}}; }
+  el.classList.add("typing");
+  let i = 0, id = null, finished = false;
+  function finish(){
+    if (finished) return;
+    finished = true;
+    clearTimeout(id);
+    el.textContent = text;
+    el.classList.remove("typing");
+  }
+  (function tick(){
+    if (finished) return;
+    el.textContent = text.slice(0, i++);
+    if (i <= text.length) id = setTimeout(tick, speed || 12);
+    else finish();
+  })();
+  return {skip: finish};
+}
+
 /* A scanner message screen with a single continue action */
 function scannerMsg(lines, btnLabel, fn){
   clearStage(); scrollTop();
@@ -331,13 +469,14 @@ function scannerMsg(lines, btnLabel, fn){
     <div class="screen"><div class="line" id="sc-lines"></div></div>`;
   stage.appendChild(sc);
   const el = sc.querySelector("#sc-lines");
-  el.textContent = lines.join("\n");
+  const typer = typeInto(el, lines.join("\n"), 11);
+  sc.querySelector(".screen").addEventListener("click", () => typer.skip());
   const wrap = document.createElement("div");
   wrap.className = "choices";
   const b = document.createElement("button");
   b.className = "choice";
   b.textContent = btnLabel;
-  b.addEventListener("click", fn);
+  b.addEventListener("click", () => { typer.skip(); fn(); });
   wrap.appendChild(b);
   stage.appendChild(wrap);
   b.focus({preventScroll:true});
@@ -350,12 +489,12 @@ function effectiveSeconds(base){
   if (S.pace === "jog") s += 0.4;
   if (S.tip) s += 0.4;
   if (S.pushHard) s += 0.3;
+  if (S.helpCost) s -= 0.2;
   if (S.body <= 3) s -= 0.6;
   return Math.max(2.4, s);
 }
 
 function pickRound(cfg, done){
-  /* cfg: {picks, seconds, target, label} */
   clearStage(); scrollTop();
   const secs = effectiveSeconds(cfg.seconds);
   let made = S.headStart; S.headStart = 0;
@@ -374,6 +513,7 @@ function pickRound(cfg, done){
     </div>
     <div class="timerbar-wrap"><div class="timerbar" id="tbar"></div></div>
     <div class="bins" id="bins"></div>
+    <div class="conveyor" aria-hidden="true"></div>
     <div class="shelf-note">Tap the bin the scanner asks for</div>`;
   stage.appendChild(sc);
 
@@ -404,7 +544,6 @@ function pickRound(cfg, done){
     targetEl.textContent = `${item}\n>> BIN ${currentBin}`;
     screenEl.classList.remove("flash"); void screenEl.offsetWidth; screenEl.classList.add("flash");
     binsEl.classList.remove("locked");
-    /* reset + run timer bar */
     barEl.style.transition = "none";
     barEl.style.width = "100%";
     barEl.classList.remove("low");
@@ -421,6 +560,7 @@ function pickRound(cfg, done){
     if (btn.dataset.code === currentBin){
       answered = true;
       clearTimeout(timeoutId);
+      clearTimeout(lowId);
       made++;
       btn.classList.add("hit");
       binsEl.classList.add("locked");
@@ -444,6 +584,7 @@ function pickRound(cfg, done){
   function finish(){
     const pct = Math.min(120, Math.round((made / cfg.target) * 100));
     S.rounds.push(pct);
+    S.steps += made * 140 + (cfg.picks - made) * 60;
     updateHUD();
     done({made, pct, target: cfg.target});
   }
@@ -482,10 +623,11 @@ function intro(){
   t.innerHTML = `
     <h1>The Rate <span>Race</span></h1>
     <div class="sub">ONE WEEK AS A WAREHOUSE PICKER.<br>CAN YOU MAKE RATE?</div>
-    <div class="tape divider" aria-hidden="true"></div>`;
+    <div class="strip" aria-hidden="true"><div class="belt"></div>${WALKER_SVG}</div>`;
   stage.appendChild(t);
   const c = document.createElement("div");
   c.className = "card quiet";
+  c.style.marginTop = "18px";
   c.innerHTML = `
     <p>You've been hired as a seasonal picker at Swiftline Fulfillment Center OH-2,
     a warehouse the size of fourteen football fields off I-75. Pickers are the people
@@ -502,14 +644,17 @@ function intro(){
   const b = document.createElement("button");
   b.className = "choice";
   b.textContent = "Badge in";
-  b.addEventListener("click", day1);
+  b.addEventListener("click", () => {
+    hud.hidden = false;
+    S.clock = "6:45a"; updateHUD();
+    transit(["MONDAY · 6:45 AM", "BADGING IN"], 320, day1);
+  });
   wrap.appendChild(b);
   c.appendChild(wrap);
   stage.appendChild(c);
 }
 
 function day1(){
-  hud.hidden = false;
   S.dayIdx = 0; S.clock = "6:45a"; updateHUD();
   card({
     kicker: "Monday · Orientation",
@@ -551,22 +696,24 @@ function day1Pace(){
 
 function day1Round(){
   S.clock = "8:00a"; updateHUD();
-  scannerMsg([
-    "ASSIGNMENT: ZONE C · PICK MODE",
-    "SESSION TARGET: 6 UNITS",
-    "",
-    "Scan when ready."
-  ], "Start picking", () => {
-    pickRound({picks: 8, seconds: 6.0, target: 6, label: "MON"}, r => {
-      S.clock = "12:30p"; updateHUD();
-      card({
-        kicker: "Monday · Midday",
-        title: r.pct >= 100 ? "You made rate" : "The number follows you",
-        body: [
-          `You picked ${r.made} against a target of ${r.target}. That's ${r.pct}%.`,
-          "The number sits in the corner of the scanner screen for the rest of the shift. You catch yourself checking it the way you check a phone."
-        ],
-        choices: [{ label: "Finish the shift", fn: () => coachingCheck(r, day1Night) }]
+  transit(["WALKING TO ZONE C"], 470, () => {
+    scannerMsg([
+      "ASSIGNMENT: ZONE C · PICK MODE",
+      "SESSION TARGET: 6 UNITS",
+      "",
+      "Scan when ready."
+    ], "Start picking", () => {
+      pickRound({picks: 8, seconds: 6.0, target: 6, label: "MON"}, r => {
+        S.clock = "12:30p"; updateHUD();
+        card({
+          kicker: "Monday · Midday",
+          title: r.pct >= 100 ? "You made rate" : "The number follows you",
+          body: [
+            `You picked ${r.made} against a target of ${r.target}. That's ${r.pct}%.`,
+            "The number sits in the corner of the scanner screen for the rest of the shift. You catch yourself checking it the way you check a phone."
+          ],
+          choices: [{ label: "Finish the shift", fn: () => coachingCheck(r, day1Night) }]
+        });
       });
     });
   });
@@ -597,14 +744,16 @@ function day1Night(){
 
 function day2(){
   S.dayIdx = 1; S.clock = "6:45a"; setBody(-1);
-  scannerMsg([
-    "NOTICE: ZONE C TARGET UPDATED",
-    "6 UNITS >> 8 UNITS",
-    "",
-    "Targets reflect current facility",
-    "performance. Thank you for being",
-    "part of the Swiftline team."
-  ], "Clip the scanner to your vest", day2Bathroom);
+  transit(["TUESDAY · 6:45 AM", "BADGING IN"], 15800, () => {
+    scannerMsg([
+      "NOTICE: ZONE C TARGET UPDATED",
+      "6 UNITS >> 8 UNITS",
+      "",
+      "Targets reflect current facility",
+      "performance. Thank you for being",
+      "part of the Swiftline team."
+    ], "Clip the scanner to your vest", day2Bathroom);
+  });
 }
 
 function day2Bathroom(){
@@ -620,18 +769,19 @@ function day2Bathroom(){
       { label: "Go. You're a person.",
         note: "The system logs it. Logs add up.",
         fn: () => {
-          S.totLogs++;
           S.choices.push("Tuesday you took the six-minute walk to the restroom, and the system logged it.");
-          scannerMsg([
-            "EVENT LOGGED",
-            "",
-            "TIME OFF TASK: 7 MIN",
-            "CATEGORY: UNSPECIFIED",
-            "",
-            "This event has been added to your",
-            "record. Repeated events may result",
-            "in a performance flag."
-          ], "Keep moving", day2Round);
+          transit(["SIX MINUTES, LOGGED", "ROUND TRIP TO THE RESTROOM"], 640, () => {
+            scannerMsg([
+              "EVENT LOGGED",
+              "",
+              "TIME OFF TASK: 7 MIN",
+              "CATEGORY: UNSPECIFIED",
+              "",
+              "This event has been added to your",
+              "record. Repeated events may result",
+              "in a performance flag."
+            ], "Keep moving", day2Round);
+          });
         } },
       { label: "Hold it until lunch",
         note: "Body -1. The rate stays clean.",
@@ -675,6 +825,10 @@ function day2Lunch(){
 
 function day3(){
   S.dayIdx = 2; S.clock = "6:45a"; setBody(-1);
+  transit(["WEDNESDAY · 6:45 AM", "BADGING IN"], 15600, day3Shelf);
+}
+
+function day3Shelf(){
   card({
     kicker: "Wednesday · Morning",
     title: "Your hands know the job now",
@@ -749,7 +903,7 @@ function day4(){
       choices: [
         { label: "Badge in anyway",
           note: "The rate doesn't care how you feel.",
-          fn: () => { S.choices.push("Thursday you badged in on an empty tank."); day4Peak(); } },
+          fn: () => { S.choices.push("Thursday you badged in on an empty tank."); day4Transit(); } },
         { label: "Call in sick",
           note: "Body +2. The system flags unplanned absence.",
           fn: () => {
@@ -764,12 +918,17 @@ function day4(){
       ]
     });
   } else {
-    day4Peak();
+    day4Transit();
   }
 }
 
+function day4Transit(){
+  S.clock = "6:45a";
+  transit(["THURSDAY · 6:45 AM", "BADGING IN"], 15400, day4Peak);
+}
+
 function day4Peak(){
-  S.clock = "6:45a"; updateHUD();
+  updateHUD();
   scannerMsg([
     "PEAK EVENT ACTIVE",
     "MANDATORY EXTRA TIME: SHIFT +2 HRS",
@@ -787,17 +946,41 @@ function day4Peak(){
       choices: [
         { label: "Stay the extra hours",
           note: "Body -2. You'll miss class again.",
-          fn: () => { setBody(-2); S.choices.push("Thursday you stayed for mandatory peak hours and missed your night class."); day4Aisle(); } },
+          fn: () => { setBody(-2); S.choices.push("Thursday you stayed for mandatory peak hours and missed your night class."); day4Dee(); } },
         { label: "Request an exception at the kiosk",
           note: "The kiosk grants it, and flags it.",
           fn: () => {
             addFlag();
             if (S.flags >= 3) return releaseEnding();
             S.choices.push("Thursday you used the HR kiosk to leave on time for class. The exception was granted, and flagged.");
-            day4Aisle();
+            day4Dee();
           } }
       ]
     });
+  });
+}
+
+function day4Dee(){
+  S.clock = "12:20p"; updateHUD();
+  const body = S.tip ? [
+    "At lunch, Dee slides a clipboard across the table: a letter to site management asking to reopen the mezzanine restrooms, the ones a five-minute walk closer to Zone C. Twenty signatures so far, in ink.",
+    "\"They can't flag paper,\" she says. \"Probably.\""
+  ] : [
+    "At the water station, Dee from the Tuesday lunch tables catches your eye. She's collecting signatures on a letter asking management to reopen the mezzanine restrooms, the ones a five-minute walk closer to Zone C.",
+    "\"No pressure,\" she says, in the tone of someone who has watched a lot of people say no."
+  ];
+  card({
+    kicker: "Thursday · Lunch",
+    title: "Twenty names, in ink",
+    body,
+    choices: [
+      { label: "Sign it",
+        note: "Your name, in ink, in a building where everything else about you is data.",
+        fn: () => { S.solidarity = true; S.choices.push("Thursday you signed Dee's letter about the restrooms. Name twenty-one."); day4Aisle(); } },
+      { label: "\"Not yet. I need this job.\"",
+        note: "Dee nods. She's heard it before.",
+        fn: () => { S.choices.push("Thursday you read Dee's letter and handed the clipboard back unsigned."); day4Aisle(); } }
+    ]
   });
 }
 
@@ -838,14 +1021,40 @@ function day4Round(){
 
 function day5(){
   S.dayIdx = 4; S.clock = "6:45a"; setBody(-1);
+  transit(["FRIDAY · 6:45 AM", "PEAK DAY"], 15200, () => {
+    card({
+      kicker: "Friday · Peak day",
+      title: "Trucks to the doors",
+      body: [
+        "Friday of a peak week. Trailers are stacked at every dock door and the conveyor hasn't stopped since you badged in.",
+        "One more session. The scanner shows the highest target you've seen."
+      ],
+      choices: [{ label: "Head to the floor", fn: day5Marcus }]
+    });
+  });
+}
+
+function day5Marcus(){
+  S.clock = "7:40a"; updateHUD();
   card({
-    kicker: "Friday · Peak day",
-    title: "Trucks to the doors",
+    kicker: "Friday · 7:40 AM",
+    title: "\"How are you making rate?\"",
     body: [
-      "Friday of a peak week. Trailers are stacked at every dock door and the conveyor hasn't stopped since you badged in.",
-      "One more session. The scanner shows the highest target you've seen."
+      "Marcus, whose badge is so new it still has the protective film on it, is three days in and drowning. His scanner has started sending him messages.",
+      "He asks how you're making rate, in the voice of someone who genuinely needs the answer."
     ],
-    choices: [{ label: "Pick up the scanner", fn: day5Round }]
+    choices: [
+      { label: S.tip ? "Show him Dee's bin-code trick" : "Show him what you've figured out",
+        note: "Ten minutes you don't have. Knowledge moves sideways.",
+        fn: () => {
+          S.mentored = true; S.helpCost = true;
+          S.choices.push("Friday you gave Marcus ten minutes and everything you'd learned about making rate.");
+          day5Round();
+        } },
+      { label: "\"Head down. Watch your number.\"",
+        note: "It's peak day. You've got your own screen to feed.",
+        fn: () => { S.choices.push("Friday you told Marcus to keep his head down, and kept yours down too."); day5Round(); } }
+    ]
   });
 }
 
@@ -885,18 +1094,26 @@ function review(){
 
 function keptEnding(rate, strong){
   S.ended = true;
+  const body = strong ? [
+    `You made it. ${rate}% average, file mostly clean. The scanner delivers the news the way it delivers everything: ASSIGNMENT EXTENDED.`,
+    "One more line follows before the screen sleeps: NEW ZONE C TARGET EFFECTIVE MONDAY: +10%.",
+    "You met the rate. So the rate moved."
+  ] : [
+    `You survived the week at ${rate}% with ${S.flags} flag${S.flags === 1 ? "" : "s"} on file. The scanner extends your assignment and enrolls you in a \"performance coaching plan,\" which appears to be a longer version of the messages it already sends.`,
+    "One more line follows: NEW ZONE C TARGET EFFECTIVE MONDAY: +10%.",
+    "Next week starts harder than this one did."
+  ];
+  if (S.solidarity){
+    body.push("Lower on the screen, easy to miss: SCHEDULE UPDATE. EFFECTIVE MONDAY YOUR SHIFT MOVES TO NIGHTS. REASON: SCHEDULE OPTIMIZATION.");
+    body.push("Maybe it's routine. Maybe it's the letter. The system will never say, and you notice that not knowing is its own kind of weight.");
+  }
+  if (S.mentored){
+    body.push("On your way out, Marcus catches you at the turnstile. He made rate today. He wanted you to know.");
+  }
   card({
     kicker: "Friday · 5:07 PM",
     title: strong ? "Assignment extended" : "Extended, with coaching",
-    body: strong ? [
-      `You made it. ${rate}% average, file mostly clean. The scanner delivers the news the way it delivers everything: ASSIGNMENT EXTENDED.`,
-      "One more line follows before the screen sleeps: NEW ZONE C TARGET EFFECTIVE MONDAY: +10%.",
-      "You met the rate. So the rate moved."
-    ] : [
-      `You survived the week at ${rate}% with ${S.flags} flag${S.flags === 1 ? "" : "s"} on file. The scanner extends your assignment and enrolls you in a \"performance coaching plan,\" which appears to be a longer version of the messages it already sends.`,
-      "One more line follows: NEW ZONE C TARGET EFFECTIVE MONDAY: +10%.",
-      "Next week starts harder than this one did."
-    ],
+    body,
     choices: [{ label: "Clock out", fn: debrief }]
   });
 }
@@ -904,15 +1121,19 @@ function keptEnding(rate, strong){
 function releaseEnding(fromReview){
   if (S.ended) return;
   S.ended = true; S.released = true;
+  const body = [
+    "The scanner buzzes once. YOUR ASSIGNMENT HAS ENDED. PLEASE RETURN YOUR SCANNER AND VEST TO THE KIOSK. THANK YOU FOR BEING PART OF THE SWIFTLINE TEAM.",
+    "No person tells you. No person decided, exactly. Your badge stops working at the turnstile, so a guard has to let you out.",
+    "In the parking lot you can already see the hiring banner by the road: NOW ONBOARDING. START MONDAY."
+  ];
+  if (S.solidarity || S.tip){
+    body.push("That night, Dee texts. The letter went in with thirty-one names, and the people who wrote it still eat lunch together on Thursdays. You're welcome anytime, badge or no badge.");
+  }
   card({
     kicker: fromReview ? "Friday · 5:07 PM" : "A message arrives",
     title: "Assignment ended",
     variant: "system",
-    body: [
-      "The scanner buzzes once. YOUR ASSIGNMENT HAS ENDED. PLEASE RETURN YOUR SCANNER AND VEST TO THE KIOSK. THANK YOU FOR BEING PART OF THE SWIFTLINE TEAM.",
-      "No person tells you. No person decided, exactly. Your badge stops working at the turnstile, so a guard has to let you out.",
-      "In the parking lot you can already see the hiring banner by the road: NOW ONBOARDING. START MONDAY."
-    ],
+    body,
     choices: [{ label: "Drive home", fn: debrief }]
   });
 }
@@ -920,15 +1141,19 @@ function releaseEnding(fromReview){
 function injuryEnding(){
   if (S.ended) return;
   S.ended = true; S.injured = true;
+  const body = [
+    "The driver doesn't see you. The load shifts as you're halfway through, and the corner of a crate pins your ankle against the racking. The pain arrives a half-second after the sound.",
+    "At the first-aid station, the incident form loads on a tablet. The first question asks whether you were following standard operating procedure at the time of the incident.",
+    "You were not. The next questions get quieter after that. Light duty pending review, the form says, which everyone on the floor knows is a hallway to the exit."
+  ];
+  if (S.tip || S.solidarity){
+    body.push("Dee finds you before your ride comes. She's seen this before. She writes her number on the corner of your incident-form printout and folds it into your hand.");
+  }
   card({
     kicker: "Thursday · Aisle 40",
     title: "The gap closes",
     variant: "system",
-    body: [
-      "The driver doesn't see you. The load shifts as you're halfway through, and the corner of a crate pins your ankle against the racking. The pain arrives a half-second after the sound.",
-      "At the first-aid station, the incident form loads on a tablet. The first question asks whether you were following standard operating procedure at the time of the incident.",
-      "You were not. The next questions get quieter after that. Light duty pending review, the form says, which everyone on the floor knows is a hallway to the exit."
-    ],
+    body,
     choices: [{ label: "Fill out the form", fn: debrief }]
   });
 }
@@ -937,14 +1162,18 @@ function quitEnding(){
   if (S.ended) return;
   S.ended = true; S.quit = true;
   S.choices.push("Thursday morning, you didn't badge in. You never went back.");
+  const body = [
+    "You silence the alarm, and for a long minute you just lie there, listening to your own pulse slow down.",
+    "By Friday your badge is deactivated automatically. Nobody calls. The job posting you answered three weeks ago is still up, word for word.",
+    "Warehouses plan for this. Turnover isn't a failure of the system. It's a feature the system prices in."
+  ];
+  if (S.tip){
+    body.push("Sunday, Dee texts to ask if you're okay. It's the only message about your leaving that came from a person.");
+  }
   card({
     kicker: "Thursday · 6:02 AM",
     title: "You don't go back",
-    body: [
-      "You silence the alarm, and for a long minute you just lie there, listening to your own pulse slow down.",
-      "By Friday your badge is deactivated automatically. Nobody calls. The job posting you answered three weeks ago is still up, word for word.",
-      "Warehouses plan for this. Turnover isn't a failure of the system. It's a feature the system prices in."
-    ],
+    body,
     choices: [{ label: "See what this week was", fn: debrief }]
   });
 }
@@ -954,7 +1183,16 @@ function quitEnding(){
 function debrief(){
   clearStage(); scrollTop();
   const rate = avgRate();
-  const chosen = S.choices.slice(0, 6).map(c => `<li>${c}</li>`).join("");
+  const chosen = S.choices.slice(0, 8).map(c => `<li>${c}</li>`).join("");
+
+  let peoplePara = "Dee is in this story on purpose. Informal knowledge, shared tips, and plain talk at a lunch table are how workers push back on systems that treat them as data points. File her under what Miller's Chapter 6 calls power, control, and resistance, and notice which conversations this week actually helped you.";
+  if (S.solidarity){
+    peoplePara += " You put your name on her letter, and something in your schedule changed afterward. You will never know whether that was retaliation or an algorithm shuffling names, and that ambiguity is itself one of the quietest forms of control.";
+  }
+  if (S.mentored){
+    peoplePara += " You also passed what you knew to Marcus. On shop floors, useful knowledge has always moved sideways between workers faster than it moves down from management. That's socialization happening peer to peer, and it's worth remembering when the course gets there.";
+  }
+
   const c = document.createElement("div");
   c.className = "card debrief";
   c.innerHTML = `
@@ -982,13 +1220,10 @@ function debrief(){
     <h3>Your week, on file</h3>
     <ul>${chosen}</ul>
     <p>Average rate: ${rate === null ? "no sessions completed" : rate + "% of target"}.
-    Flags: ${S.flags} of 3.${S.injured ? " Ended by injury." : ""}${S.quit ? " Ended by walking away." : ""}${S.released ? " Assignment ended by the system." : ""}</p>
+    Flags: ${S.flags} of 3. Steps walked: about ${fmtSteps()}.${S.injured ? " Ended by injury." : ""}${S.quit ? " Ended by walking away." : ""}${S.released ? " Assignment ended by the system." : ""}</p>
 
     <h3>Where the people are</h3>
-    <p>Dee is in this story on purpose. Informal knowledge, shared tips, and plain talk at
-    a lunch table are how workers push back on systems that treat them as data points.
-    File her under what Miller's Chapter 6 calls power, control, and resistance, and
-    notice which conversations this week actually helped you.</p>
+    <p>${peoplePara}</p>
 
     <h3>For the discussion forum</h3>
     <ul>

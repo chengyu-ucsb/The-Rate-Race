@@ -1,15 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import {
   BINS, DAYS, POLICY_DEFS, WORKERS,
-  createGame, configure, startShift, getOrder, doWork, chooseEvent, nextShift,
+  createGame, configure, startShift, getOrder, getShelf, doWork, chooseEvent, nextShift,
   comparePolicies, serializeState, deserializeState, validateState, reportText,
 } from '../engine.js';
 
 const defaultEvents = ['test', 'rotate', 'coordinate', 'guarantee', 'document'];
 const correctAction = (order, overrides = {}) => ({
-  bin: order.bin, pack: order.fragile ? 'box' : 'mailer',
-  inspect: true, pace: 'steady', rest: false, ...overrides,
+  bin: order.bin, pack: (order.requiresBox ?? order.fragile) ? 'box' : 'mailer',
+  inspect: true, pace: 'steady', rest: false, quantity: order.quantity ?? 1, ...overrides,
 });
 
 function finish(state, { event, action = () => ({}) } = {}) {
@@ -370,4 +371,137 @@ test('the submission record includes actual decisions, evidence and a clear subm
   assert.equal(POLICY_DEFS.length, 6);
   assert.equal(WORKERS.length, 3);
   assert.equal(DAYS.length, 5);
+});
+
+test('model 3 shelf is stable within a shift with exactly one target SKU and close-code distractors', () => {
+  for (let seed = 0; seed < 12; seed += 1) {
+    let s = createGame(seed);
+    for (let day = 0; day < 5; day += 1) {
+      s = startShift(s);
+      const shelf = getShelf(s);
+      assert.equal(shelf.length, 9);
+      assert.equal(new Set(shelf.map((entry) => entry.bin)).size, 9);
+      assert.equal(new Set(shelf.map((entry) => entry.sku)).size, 9);
+      assert.ok(shelf.every((entry) => typeof entry.icon === 'string' && /^#[0-9a-f]{6}$/i.test(entry.color)));
+      if (day > 0) {
+        assert.equal(new Set(shelf.map((entry) => entry.item)).size, 3);
+        for (const family of [0, 1, 2]) {
+          const variants = shelf.filter((entry) => entry.family === family);
+          assert.equal(variants.length, 3);
+          assert.equal(new Set(variants.map((entry) => entry.item)).size, 1);
+          assert.equal(new Set(variants.map((entry) => entry.icon)).size, 1);
+        }
+      }
+      for (let index = 0; index < 6; index += 1) {
+        if (index === 3) s = chooseEvent(s, defaultEvents[day]);
+        const order = getOrder(s);
+        const matching = shelf.filter((entry) => entry.sku === order.sku);
+        assert.equal(matching.length, 1);
+        assert.equal(matching[0].bin, order.bin);
+        assert.equal(matching[0].item, order.item);
+        assert.equal(matching[0].fragile, order.fragile);
+        const signature = order.sku.split('-')[1].split('').sort().join('');
+        assert.equal(shelf.filter((entry) => entry.sku !== order.sku && entry.sku.split('-')[1].split('').sort().join('') === signature).length, 2);
+        s = doWork(s, correctAction(order));
+        assert.deepEqual(getShelf(s), shelf);
+      }
+      s = nextShift(s);
+    }
+  }
+});
+
+test('quantity difficulty progresses, stays within capacity rules and preserves good-order accounting', () => {
+  let s = createGame(3008);
+  for (let day = 0; day < 5; day += 1) {
+    s = startShift(s);
+    const quantities = new Set(s.shift.orders.map((order) => order.quantity));
+    assert.deepEqual([...quantities].sort(), day === 0 ? [1] : day === 1 ? [1, 2] : [1, 2, 3]);
+    for (const order of s.shift.orders) assert.equal(order.requiresBox, order.fragile || order.quantity === 3);
+    s = finish(s);
+    assert.equal(s.shift.shipped, 6);
+    assert.equal(s.shift.defects, 0);
+    assert.equal(s.shift.raw, 6, 'Productivity counts completed orders, not the number of units inside them.');
+    s = nextShift(s);
+  }
+});
+
+test('wrong quantities can escape or be caught and reworked; additional picked units consume time', () => {
+  const s = startShift(createGame(3008));
+  const order = getOrder(s);
+  assert.equal(order.quantity, 1);
+  const right = doWork(s, correctAction(order, { inspect: false }));
+  const wrong = doWork(s, correctAction(order, { quantity: 2, inspect: false }));
+  const caught = doWork(s, correctAction(order, { quantity: 2, inspect: true }));
+  assert.equal(wrong.shift.actions[0].good, false);
+  assert.ok(wrong.shift.actions[0].escapedIssues.some((issue) => issue.includes('Incorrect quantity')));
+  assert.equal(caught.shift.actions[0].good, true);
+  assert.ok(caught.shift.actions[0].interceptedIssues.some((issue) => issue.includes('requested 1, packed 2')));
+  assert.equal(Math.round((wrong.shift.minutes - right.shift.minutes) * 100) / 100, 0.15);
+  assert.ok(caught.shift.minutes > wrong.shift.minutes);
+  for (const quantity of [undefined, null, 0, 4, -1, 1.5, '2', NaN]) {
+    assert.throws(() => doWork(s, correctAction(order, { quantity })), /quantity/);
+  }
+});
+
+test('three nonfragile units require a box, while two fit in a mailer', () => {
+  let s = dayPlan(3, 3008);
+  s = startShift(s);
+  const index = s.shift.orders.findIndex((order) => !order.fragile && order.quantity === 3);
+  assert.ok(index >= 0, 'The fixture should contain the quantity-based packaging challenge.');
+  s = atOrder(s, index);
+  const order = getOrder(s);
+  const mailer = doWork(s, correctAction(order, { pack: 'mailer', inspect: false }));
+  const box = doWork(s, correctAction(order, { pack: 'box', inspect: false }));
+  assert.ok(mailer.shift.actions[index].escapedIssues.includes('Mailer capacity is 2; three items need a box'));
+  assert.equal(box.shift.actions[index].issues.includes('Mailer capacity is 2; three items need a box'), false);
+  const corrected = doWork(s, correctAction(order, { pack: 'mailer', inspect: true }));
+  assert.equal(corrected.shift.actions[index].good, true);
+  assert.ok(corrected.shift.actions[index].interceptedIssues.includes('Mailer capacity is 2; three items need a box'));
+  let t = startShift(dayPlan(1, 3008));
+  const twoIndex = t.shift.orders.findIndex((candidate) => !candidate.fragile && candidate.quantity === 2);
+  assert.ok(twoIndex >= 0);
+  t = atOrder(t, twoIndex);
+  const two = doWork(t, correctAction(getOrder(t), { pack: 'mailer', inspect: false }));
+  assert.equal(two.shift.actions[twoIndex].issues.some((issue) => issue.includes('capacity')), false);
+});
+
+test('model-3 replays use strict six-value actions, including the exact picked quantity', () => {
+  let s = startShift(createGame(3008));
+  s = doWork(s, correctAction(getOrder(s), { quantity: 2 }));
+  const data = JSON.parse(serializeState(s));
+  assert.equal(data.v, 3);
+  assert.equal(data.runs[0].w[0].length, 6);
+  assert.equal(data.runs[0].w[0][5], 2);
+  assert.deepEqual(deserializeState(JSON.stringify(data)), s);
+  for (const bad of [0, 4, 1.5, '1', null]) {
+    const altered = structuredClone(data);
+    altered.runs[0].w[0][5] = bad;
+    assert.throws(() => deserializeState(JSON.stringify(altered)), /quantity/);
+  }
+  const short = structuredClone(data);
+  short.runs[0].w[0].pop();
+  assert.throws(() => deserializeState(JSON.stringify(short)), /order decision/);
+  const hybrid = structuredClone(data);
+  hybrid.v = 2;
+  assert.throws(() => deserializeState(JSON.stringify(hybrid)), /order decision/);
+});
+
+test('a deployed model-2 snapshot preserves its entire state and original five-value action semantics', () => {
+  // Captured from the deployed v2 engine before any v3 generation/accounting changes.
+  const golden = '{"v":2,"seed":3008,"phase":"debrief","runs":[{"p":[1,1,0,0,0,0],"a":[0,1,2],"w":[[3,1,1,0,0],[4,0,1,0,0],[0,1,1,0,0],[4,1,1,0,0],[0,1,1,0,0],[3,1,1,0,0]],"e":"test"},{"p":[1,1,1,0,0,0],"a":[0,1,2],"w":[[0,1,1,0,0],[2,1,1,0,0],[0,1,1,0,0],[6,0,1,0,0],[2,0,1,0,0],[5,0,1,0,0]],"e":"rotate"},{"p":[1,1,1,1,1,0],"a":[0,1,2],"w":[[0,0,1,0,0],[0,1,1,0,0],[2,0,1,0,0],[5,1,1,0,0],[1,0,1,0,0],[3,0,1,0,0]],"e":"coordinate"},{"p":[1,1,1,1,1,2],"a":[0,1,2],"w":[[2,1,1,1,0],[5,1,1,1,0],[1,0,1,1,0],[7,1,1,1,0],[0,0,1,1,0],[2,0,1,1,0]],"e":"flexible"},{"p":[1,1,1,1,1,2],"a":[0,1,2],"w":[[6,0,1,1,1],[8,1,1,1,0],[2,1,1,1,0],[4,0,1,1,0],[6,1,1,1,0],[5,1,1,1,0]],"e":"document"}],"plan":null}';
+  const state = deserializeState(golden);
+  assert.equal(state.version, 2);
+  assert.equal(createHash('sha256').update(JSON.stringify(state)).digest('hex'), 'b610b1a74502fbdfa9906944baaef27ddfdc7379510f2788281eab850be8bc0c');
+  assert.equal(serializeState(state), golden);
+  assert.equal(validateState(state), true);
+  assert.match(reportText(state), /model 2/);
+  const active = startShift(createGame(3008, 2));
+  assert.equal(getOrder(active).bin, 'B1');
+  assert.equal('quantity' in getOrder(active), false);
+  const action = { bin: 'B1', pack: 'box', inspect: true, pace: 'steady', rest: false };
+  const after = doWork(active, action);
+  assert.deepEqual(after.shift.actions[0].input, action);
+  assert.equal(JSON.parse(serializeState(after)).runs[0].w[0].length, 5);
+  assert.deepEqual(deserializeState(serializeState(after)), after);
+  assert.equal(getShelf(active).filter((entry) => entry.bin === 'B1').length, 1);
 });

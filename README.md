@@ -10,6 +10,10 @@ Built for COMM 3008, Introduction to Organizational Communication, at the Univer
 
 Each shift introduces another part of the organization. Choose a policy, process six orders, and review the consequences before the next shift.
 
+On the floor, match an order's exact stock code (SKU) to a product on a nine-bin shelf, choose the quantity, and build the parcel. Similar products carry different codes. A mailer holds one or two nonfragile items; fragile goods and three-item orders need a box. Inspection is a deliberate choice on every order and uses simulated time to catch and correct mistakes.
+
+Illustrated products and crew, a parcel preview, a warehouse flow display, and dispatch feedback show the work as it happens. A weekly chart separates good orders delivered on time, good but late orders, and defective shipments.
+
 | Shift | Decisions | Course connection |
 | --- | --- | --- |
 | 1. The work method | Method and training | Taylor: work study, standardization, and the division between planning and execution |
@@ -18,7 +22,7 @@ Each shift introduces another part of the organization. Choose a policy, process
 | 4. The pay system | Time-based pay, stable piece rates, or a moving target | Incentives, rate-busting, and systematic soldiering |
 | 5. A changed demand | Respond to work that challenges the established system | The limits of predictability and standardization |
 
-The game measures simulated work time, not how quickly students move a mouse. Multi-step orders, exceptions, and an evidence log connect management choices to the work itself. Reports distinguish good orders from orders completed on time, alongside modeled fatigue, trust, and pay. The final debrief lets students replay the last shift's orders and decisions under a different policy.
+The first shift uses distinct products and single-item orders. Later shifts add look-alike variants, larger quantities, and more complicated exceptions. The game measures simulated work time, not how quickly students move a mouse. Reports connect decisions to quality, timeliness, modeled fatigue, trust, and pay. A controlled replay after each shift lets students change one policy while keeping the same orders and decisions; the final debrief includes this comparison for the last shift.
 
 The model is designed for discussion. Its numerical relationships are transparent teaching assumptions, not estimates of real workplaces. There is no single score that establishes the best organization.
 
@@ -29,6 +33,8 @@ Plan for roughly 15–20 minutes of individual exploration, or 25–35 minutes i
 Students can copy or print their result and respond to reflection prompts in Canvas or another LMS. The game does not submit grades or collect assignment responses. The [instructor guide](docs/instructor-guide.md) includes a suggested activity and a short written reflection.
 
 Share/resume links contain a snapshot of the run in the URL fragment. Opening that link on another device restores that snapshot. Changes made afterward require a new link; this is not a live shared session. The game has no accounts or application backend.
+
+Previously saved model-2 links still open with their direct-bin tasks. New runs use the expanded shelf, quantity, and packaging mechanics.
 
 ## Development
 

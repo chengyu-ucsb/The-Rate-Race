@@ -1,11 +1,11 @@
 /**
- * The Rate Race, model version 2.
+ * The Rate Race, model version 3, with exact version-2 replay support.
  * A deterministic teaching model, NOT an estimate of a real workplace.
  * All time, pay, fatigue and trust coefficients are invented for discussion.
  * No DOM, network, random global state, wall clock or browser storage is used.
  */
 
-export const MODEL_VERSION = 2;
+export const MODEL_VERSION = 3;
 export const BINS = Object.freeze(['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3']);
 export const WORKERS = Object.freeze([
   { id: 'nia', name: 'Nia', role: 'Experienced picker', skills: { pick: 5, pack: 3, check: 3 } },
@@ -62,6 +62,7 @@ export const MODEL_ASSUMPTIONS = Object.freeze([
   'Formal rules add recording time. In the disputed-priority event, applying published criteria costs less investigation time and protects equal treatment; existing records also help resolve the final quality exception. An authorized gangplank does not remove hierarchy.',
   'Only the moving-target policy can raise a quota after actual above-target output. Stable piece rates remain 3 credits per good order.',
   'Comparisons replay the same work inputs and event responses under an alternative policy. They are model projections, not experiments on people.',
+  'In model 3, shelf locations stay fixed within a shift. Similar product variants have distinct SKUs; requested quantities and package capacity must both be checked. Older model-2 links retain their original direct-bin tasks and calculations.',
 ]);
 
 const STATIONS = ['pick', 'pack', 'check'];
@@ -74,6 +75,16 @@ const ITEMS = [
   { item: 'Charging cable', fragile: false }, { item: 'Desk lamp', fragile: true },
   { item: 'Canvas pencil case', fragile: false }, { item: 'Glass food container', fragile: true },
   { item: 'Wool socks', fragile: false },
+];
+const ITEM_ICONS = ['notebook', 'bottle', 'tote', 'mug', 'cable', 'lamp', 'pouch', 'container', 'socks'];
+const SHELF_PREFIXES = ['HX', 'QF', 'MX', 'VX', 'GX'];
+const SKU_SUFFIXES = ['218', '281', '812', '324', '342', '432', '615', '651', '561'];
+const FAMILY_COLORS = ['#e8926c', '#70c9bb', '#a99cdb'];
+const SHIFT_FAMILIES = [null,
+  [{ item: 'Notebook set', fragile: false, icon: 'notebook' }, { item: 'Glass water bottle', fragile: true, icon: 'bottle' }, { item: 'Charging cable', fragile: false, icon: 'cable' }],
+  [{ item: 'Cotton tote', fragile: false, icon: 'tote' }, { item: 'Ceramic mug', fragile: true, icon: 'mug' }, { item: 'Desk lamp', fragile: true, icon: 'lamp' }],
+  [{ item: 'Canvas pencil case', fragile: false, icon: 'pouch' }, { item: 'Glass food container', fragile: true, icon: 'container' }, { item: 'Wool socks', fragile: false, icon: 'socks' }],
+  [{ item: 'Glass gift set', fragile: true, icon: 'bottle' }, { item: 'Ceramic gift set', fragile: true, icon: 'mug' }, { item: 'Notebook gift set', fragile: false, icon: 'notebook' }],
 ];
 
 const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -114,17 +125,22 @@ function checkAssignment(assignment) {
   requireThat(ids.every((id) => STATIONS.includes(assignment[id])) && new Set(Object.values(assignment)).size === 3, 'Each station needs one different worker.');
 }
 
-function checkAction(action) {
+function checkAction(action, version) {
   requireThat(plain(action), 'A work action must be an object.');
   requireThat(BINS.includes(action.bin), 'Choose a valid storage bin.');
   requireThat(['box', 'mailer'].includes(action.pack), 'Choose a box or mailer.');
   requireThat(['steady', 'rush'].includes(action.pace), 'Choose a steady or rushed pace.');
   requireThat(typeof action.inspect === 'boolean' && typeof action.rest === 'boolean', 'Inspection and recovery choices must be true or false.');
-  return { bin: action.bin, pack: action.pack, inspect: action.inspect, pace: action.pace, rest: action.rest };
+  const checked = { bin: action.bin, pack: action.pack, inspect: action.inspect, pace: action.pace, rest: action.rest };
+  if (version === 3) {
+    requireThat(Number.isInteger(action.quantity) && action.quantity >= 1 && action.quantity <= 3, 'Choose a quantity from 1 to 3.');
+    checked.quantity = action.quantity;
+  }
+  return checked;
 }
 
 function stateShell(state, phase) {
-  requireThat(plain(state) && state.version === MODEL_VERSION && PHASES.includes(state.phase), 'This is not a compatible game state.');
+  requireThat(plain(state) && [2, MODEL_VERSION].includes(state.version) && PHASES.includes(state.phase), 'This is not a compatible game state.');
   requireThat(Number.isInteger(state.day) && state.day >= 0 && state.day < DAYS.length, 'Invalid shift.');
   requireThat(Number.isInteger(state.seed) && state.seed >= 0 && state.seed <= 0xffffffff, 'Invalid scenario seed.');
   if (phase) requireThat(state.phase === phase, `This action is only available during ${phase}.`);
@@ -134,10 +150,11 @@ export function policyLabel(id, value) {
   return POLICY_DEFS.find((p) => p.id === id)?.options.find((o) => o.id === value)?.label ?? String(value);
 }
 
-export function createGame(seed = 3008) {
+export function createGame(seed = 3008, version = MODEL_VERSION) {
   requireThat(Number.isInteger(seed) && seed >= 0 && seed <= 0xffffffff, 'Use a whole-number scenario seed from 0 to 4294967295.');
+  requireThat([2, MODEL_VERSION].includes(version), 'Use a supported model version.');
   return {
-    version: MODEL_VERSION, seed, day: 0, phase: 'plan',
+    version, seed, day: 0, phase: 'plan',
     policies: { ...DEFAULT_POLICIES }, assignment: { ...DEFAULT_ASSIGNMENT },
     metrics: { raw: 0, shipped: 0, defects: 0, reworked: 0, late: 0, minutes: 0, fatigue: 15, trust: 65, wages: 0 },
     capabilities: { trained: false, studied: false, workerTip: false, localTip: false, unloggedException: false, ratchetTarget: 0, ratchetRate: 3, targetChanged: false },
@@ -156,7 +173,8 @@ export function configure(state, policies = {}, assignment = state.assignment) {
   return next;
 }
 
-function ordersFor(seed, day) {
+// Retain this generator unchanged so old replay links produce the same orders.
+function ordersV2(seed, day) {
   return Array.from({ length: 6 }, (_, index) => {
     const itemIndex = Math.floor(draw(seed, day, index, 1) * ITEMS.length);
     const chosen = ITEMS[itemIndex];
@@ -172,6 +190,58 @@ function ordersFor(seed, day) {
       workerId: WORKERS[(day + index) % WORKERS.length].id,
     };
   });
+}
+
+function shelfFor(seed, day) {
+  const positions = BINS.map((_, index) => index);
+  for (let i = positions.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(draw(seed, day, i, 31) * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  return BINS.map((bin, index) => {
+    const catalogIndex = positions[index];
+    const family = Math.floor(catalogIndex / 3);
+    const product = day === 0 ? { ...ITEMS[catalogIndex], icon: ITEM_ICONS[catalogIndex] } : SHIFT_FAMILIES[day][family];
+    return {
+      bin, sku: `${SHELF_PREFIXES[day]}-${SKU_SUFFIXES[catalogIndex]}`,
+      item: product.item, icon: product.icon, color: FAMILY_COLORS[family],
+      fragile: product.fragile, family,
+    };
+  });
+}
+
+function ordersV3(seed, day) {
+  const shelf = shelfFor(seed, day);
+  const quantityOffset = Math.floor(draw(seed, day, 0, 37) * 3);
+  return Array.from({ length: 6 }, (_, index) => {
+    const family = day === 4 ? (index % 3 === 0 ? 2 : index % 2) : index % 3;
+    const candidates = day === 0 ? shelf : shelf.filter((entry) => entry.family === family);
+    const product = candidates[Math.floor(draw(seed, day, index, 2) * candidates.length)];
+    const quantity = day === 0 ? 1 : day === 1 ? 1 + (index + seed % 2) % 2 : 1 + (index + Math.floor(index / 3) + quantityOffset) % 3;
+    const damaged = index === 4 || (day === 4 && index === 2);
+    return {
+      id: `D${day + 1}-${String(index + 1).padStart(2, '0')}`,
+      bin: product.bin, sku: product.sku, item: product.item,
+      icon: product.icon, color: product.color,
+      quantity, requiresBox: product.fragile || quantity === 3,
+      fragile: product.fragile, damaged,
+      condition: damaged ? 'Scuffed seal: inspect and replace if damaged.' : 'Seal intact.',
+      workerId: WORKERS[(day + index) % WORKERS.length].id,
+    };
+  });
+}
+
+/** A fixed, deterministic nine-bin inventory for the current model-3 shift. */
+export function getShelf(state) {
+  stateShell(state);
+  if (state.version === 3) return shelfFor(state.seed, state.day);
+  // Model 2 did not have a fixed inventory: retain its direct-bin task semantics.
+  const order = state.shift?.orders[Math.min(state.shift.index, 5)] ?? ordersV2(state.seed, state.day)[0];
+  return BINS.map((bin) => ({
+    bin, sku: bin, item: bin === order.bin ? order.item : 'Storage bin',
+    icon: bin === order.bin ? (ITEM_ICONS[ITEMS.findIndex((item) => item.item === order.item)] ?? 'notebook') : 'notebook',
+    color: '#a99cdb',
+  }));
 }
 
 function baselineOf(state) {
@@ -199,7 +269,7 @@ export function startShift(state) {
   const day = DAYS[next.day];
   next.phase = 'work';
   next.shift = {
-    index: 0, orders: ordersFor(next.seed, next.day), minutes: 0,
+    index: 0, orders: next.version === 2 ? ordersV2(next.seed, next.day) : ordersV3(next.seed, next.day), minutes: 0,
     raw: 0, shipped: 0, defects: 0, reworked: 0, late: 0, onTime: 0, wages: 0,
     target: next.policies.incentive === 'ratchet' ? Math.max(day.target, next.capabilities.ratchetTarget) : day.target,
     budget: day.budget, actions: [], event: null, result: null,
@@ -348,11 +418,13 @@ export function chooseEvent(state, choiceId) {
  * Skills, task switching, fatigue, incentive credibility, and events then
  * change these operations. Recovery is 3 minutes; intercepted errors are
  * reworked for 1.6 minutes plus 0.35 for each additional issue.
+ * In model 3, each additional picked unit costs 0.15 simulated minutes.
+ * Mailers hold at most two nonfragile units; a third unit requires a box.
  */
 export function doWork(state, action) {
   stateShell(state, 'work');
   requireThat(!state.shift.event || state.shift.event.resolved, 'Resolve the interruption before continuing work.');
-  const input = checkAction(action);
+  const input = checkAction(action, state.version);
   const next = clone(state);
   const shift = next.shift;
   const order = shift.orders[shift.index];
@@ -379,9 +451,14 @@ export function doWork(state, action) {
   if (next.day === 4 && order.fragile && !shift.effects.adapted) workTime += next.policies.method === 'study' ? 0.9 : 0.35;
   if (input.inspect) workTime += 1.35 * skillFactor(next, checker, 'check');
   if (next.policies.rules === 'formal') workTime += 0.35;
+  if (next.version === 3) workTime += (input.quantity - 1) * 0.15;
   const issues = [];
   if (input.bin !== order.bin) issues.push('Wrong storage bin');
   if (order.fragile && input.pack !== 'box') issues.push('Fragile item needs a box');
+  if (next.version === 3) {
+    if (input.quantity !== order.quantity) issues.push(`Incorrect quantity: requested ${order.quantity}, packed ${input.quantity}`);
+    if (!order.fragile && (order.quantity === 3 || input.quantity === 3) && input.pack !== 'box') issues.push('Mailer capacity is 2; three items need a box');
+  }
   if (order.damaged) issues.push('Damaged item needs replacement');
   const slipRisk = bound(0.085 - (next.capabilities.trained ? 0.055 : 0) + Math.max(0, next.metrics.fatigue - 30) * 0.0025 + (input.pace === 'rush' ? 0.14 : 0), 0, 0.65);
   if (draw(next.seed, next.day, shift.index, 7) < slipRisk) issues.push('Execution slip in handling');
@@ -475,7 +552,11 @@ function compactRun(resultOrShift) {
   return {
     p: POLICY_DEFS.map((d) => d.options.findIndex((o) => o.id === baseline.policies[d.id])),
     a: WORKERS.map((w) => STATIONS.indexOf(baseline.assignment[w.id])),
-    w: resultOrShift.actions.map(({ input: a }) => [BINS.indexOf(a.bin), a.pack === 'box' ? 1 : 0, a.inspect ? 1 : 0, a.pace === 'rush' ? 1 : 0, a.rest ? 1 : 0]),
+    w: resultOrShift.actions.map(({ input: a }) => {
+      const tuple = [BINS.indexOf(a.bin), a.pack === 'box' ? 1 : 0, a.inspect ? 1 : 0, a.pace === 'rush' ? 1 : 0, a.rest ? 1 : 0];
+      if (baseline.version === 3) tuple.push(a.quantity);
+      return tuple;
+    }),
     e: resultOrShift.event?.choice ?? resultOrShift.eventChoice ?? null,
   };
 }
@@ -489,7 +570,7 @@ export function serializeState(state) {
     p: POLICY_DEFS.map((d) => d.options.findIndex((o) => o.id === state.policies[d.id])),
     a: WORKERS.map((w) => STATIONS.indexOf(state.assignment[w.id])),
   } : null;
-  return JSON.stringify({ v: MODEL_VERSION, seed: state.seed, phase: state.phase, runs, plan });
+  return JSON.stringify({ v: state.version, seed: state.seed, phase: state.phase, runs, plan });
 }
 
 function parsePlan(plan, day) {
@@ -508,10 +589,10 @@ export function deserializeState(text) {
   requireThat(typeof text === 'string' && text.length <= 12000, 'The saved game link is too large or invalid.');
   let data;
   try { data = JSON.parse(text); } catch { fail('The saved game link could not be read.'); }
-  requireThat(plain(data) && data.v === MODEL_VERSION, 'This saved game belongs to a different model version.');
+  requireThat(plain(data) && [2, MODEL_VERSION].includes(data.v), 'This saved game belongs to a different model version.');
   requireThat(PHASES.includes(data.phase), 'Invalid saved phase.');
   requireThat(Array.isArray(data.runs) && data.runs.length <= DAYS.length, 'Invalid number of shifts.');
-  let state = createGame(data.seed);
+  let state = createGame(data.seed, data.v);
   for (let i = 0; i < data.runs.length; i += 1) {
     const run = data.runs[i];
     const plan = parsePlan(run, i);
@@ -526,8 +607,11 @@ export function deserializeState(text) {
         state = chooseEvent(state, run.e);
       }
       const tuple = run.w[j];
-      requireThat(Array.isArray(tuple) && tuple.length === 5 && Number.isInteger(tuple[0]) && tuple[0] >= 0 && tuple[0] < BINS.length && tuple.slice(1).every((v) => v === 0 || v === 1), 'Invalid order decision.');
-      state = doWork(state, { bin: BINS[tuple[0]], pack: tuple[1] ? 'box' : 'mailer', inspect: Boolean(tuple[2]), pace: tuple[3] ? 'rush' : 'steady', rest: Boolean(tuple[4]) });
+      requireThat(Array.isArray(tuple) && tuple.length === (data.v === 2 ? 5 : 6) && Number.isInteger(tuple[0]) && tuple[0] >= 0 && tuple[0] < BINS.length && tuple.slice(1, 5).every((v) => v === 0 || v === 1), 'Invalid order decision.');
+      if (data.v === 3) requireThat(Number.isInteger(tuple[5]) && tuple[5] >= 1 && tuple[5] <= 3, 'Invalid picked quantity.');
+      const action = { bin: BINS[tuple[0]], pack: tuple[1] ? 'box' : 'mailer', inspect: Boolean(tuple[2]), pace: tuple[3] ? 'rush' : 'steady', rest: Boolean(tuple[4]) };
+      if (data.v === 3) action.quantity = tuple[5];
+      state = doWork(state, action);
     }
     if (run.w.length === 3 && run.e !== null) state = chooseEvent(state, run.e);
     if (run.w.length < 3) requireThat(run.e === null, 'The event has not happened yet.');
@@ -582,7 +666,7 @@ export function comparePolicies(state, overrides) {
 
 export function reportText(state) {
   stateShell(state);
-  const lines = ['THE RATE RACE · SHIFT RECORD', `Scenario ${state.seed} · model ${MODEL_VERSION}`, '', 'All figures are fictional model outcomes. Reading time does not affect the shift clock.', ''];
+  const lines = ['THE RATE RACE · SHIFT RECORD', `Scenario ${state.seed} · model ${state.version}`, '', 'All figures are fictional model outcomes. Reading time does not affect the shift clock.', ''];
   for (const r of state.history) {
     const inspections = r.actions.filter((a) => a.input.inspect).length;
     const rushes = r.actions.filter((a) => a.input.pace === 'rush').length;

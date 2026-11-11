@@ -30,6 +30,20 @@ Students do not need separate manager and worker websites. The game moves betwee
 
 The result can be copied or printed. Share/resume creates a URL containing a snapshot of the run, which can be reopened on another device. A later change needs a new link. Reflection prompts are for use in Canvas or another submission system; the game does not collect written responses or submit grades.
 
+## How students process an order
+
+The workbench combines an order ticket, a nine-bin shelf, and a packing area. Product illustrations help students recognize what they are handling, but the exact stock code (SKU) determines which variant the customer requested.
+
+1. **Match the full SKU.** Find the exact code on the shelves. Choosing the right product family with the wrong code still produces a picking error.
+2. **Select the requested quantity.** Count one, two, or three units into the parcel. The parcel preview reflects the chosen quantity and packaging.
+3. **Choose packaging.** A mailer holds one or two nonfragile units. Fragile goods or three-unit orders require a box.
+4. **Decide whether to inspect.** Inspection starts unchecked for each order. Selecting it adds simulated time and catches mistakes that require rework. Skipping it can let a wrong item, wrong count, unsuitable package, damaged item, or handling slip reach dispatch.
+5. **Choose pace and recovery, then dispatch.** Rushing changes time and fatigue in the model; a recovery break also has a time cost. Feedback distinguishes work completed without correction, problems caught and reworked, late orders, and defects that reached dispatch.
+
+Shelf locations stay fixed within a shift. The first shift has distinct products and one unit per order; the second introduces look-alike variants and quantities of one or two. From the third shift, quantities can reach three, making package capacity another requirement. Difficulty comes from interpreting the order and coordinating decisions, without a real-time countdown.
+
+The warehouse flow display tracks progress through the six orders, and illustrated crew cards accompany staffing decisions. Use the weekly chart to compare on-time good orders, late good orders, and defective shipments; the table provides exact values. The visuals represent the game state rather than a live simulation of parallel production stations.
+
 ## What to notice in each shift
 
 ### 1. Methods and training: Taylor
@@ -52,7 +66,11 @@ Distinguish **unity of command**, receiving instructions from one supervisor for
 
 Follow an exception through the available communication routes. What information must travel, who can authorize an action, and where does work wait? Contrast a strict scalar chain with an authorized lateral connection.
 
-Fayol's **gangplank** permits communication across the hierarchy when a superior authorizes it and it helps the work. It is not a rejection of organization or responsibility. Written criteria also make the game's final quality exception easier to justify. Extend that case by asking when a rule might protect an employee from an arbitrary instruction. Weber's rational-legal authority rests on a system of rules and authorized offices, rather than the personal wishes of whoever holds a role.
+Fayol's **gangplank** permits communication across the hierarchy when a superior authorizes it and it helps the work. It is not a rejection of organization or responsibility.
+
+In this shift, Sales asks for a favored account to jump the queue. If students resolve the conflict through a recorded escalation or an authorized call, written criteria let them apply the same standard to every account. This reduces the time spent assembling an individual justification and increases modeled trust, while routine documentation still costs time on every order. Written records also make the final shift's quality exception easier to justify.
+
+Ask whether the decision belongs to a powerful individual or to an office applying an established criterion. Weber's rational-legal authority rests on a system of rules and authorized offices, rather than the personal wishes of whoever holds a role. The case gives formal procedures a protective function as well as a cost.
 
 Weber's bureaucracy is an **ideal type**, an analytical model of an organizational form. “Ideal” does not mean morally perfect. Formal procedures can produce reliability and impartiality while still being poorly suited to an unfamiliar case.
 
@@ -70,13 +88,15 @@ Do not identify arbitrary rate cuts as Taylor's recommendation. Miller presents 
 
 Ask students which established rule still helps and which no longer fits. Does the organization have a way to recognize an exception and revise its procedure? Does information reach the person who can act on it?
 
+Checking the final batch addresses damaged stock. It does not prevent a later picking, counting, or packing mistake; those still require attention to the order and, when chosen, an individual inspection. Ask students to distinguish a useful procedure from an assumption that one check guarantees all later work.
+
 Classical communication tends to be task-focused, formal, written, and downward. That does not mean upward messages are impossible. The lecture distinguishes information needed for work, reports of compliance, problems, and suggestions. An organization can formally permit a message while making it slow or difficult to send.
 
 **Reading:** Miller (2015), pp. 30–32; Week 2 Mini-lecture 3, slides 10–17.
 
 ## Use the comparison carefully
 
-The final comparison replays the last shift with the same orders, work decisions, event response, and starting conditions under a different policy. This helps students trace a model's consequences without also changing the workload. It does not rerun the whole week: training purchased earlier remains available. Ask students to name the policy difference, identify an outcome, and explain the mechanism.
+A controlled replay is available after each shift. The final debrief's comparison replays the last shift with the same orders, work decisions, event response, and starting conditions under a different policy. This helps students trace a model's consequences without also changing the workload. It does not rerun the whole week: training purchased earlier remains available. Ask students to name the policy difference, identify an outcome, and explain the mechanism.
 
 Read the measures separately. The target counts good orders completed before dispatch; a late but correct order is still good output. Rate means good orders per simulated hour. Fatigue and trust are modeled indicators, not measurements of students' bodies or attitudes.
 

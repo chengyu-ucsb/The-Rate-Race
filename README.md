@@ -66,3 +66,8 @@ The redesign draws primarily on Katherine Miller's *Organizational Communication
 ## License
 
 Text, design, and code are shared for educational use under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). Adapt for noncommercial teaching with attribution and share adaptations under the same terms.
+
+
+### Typefaces
+
+The site bundles [Manrope](https://github.com/google/fonts/tree/main/ofl/manrope) for reading and controls, and [Space Grotesk](https://github.com/google/fonts/tree/main/ofl/spacegrotesk) for headings. The fonts load from this repository and retain their own SIL Open Font License: [Manrope](assets/fonts/Manrope-OFL.txt) and [Space Grotesk](assets/fonts/Space-Grotesk-OFL.txt). These font licenses are separate from the game’s license above.

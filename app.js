@@ -1,5 +1,5 @@
 import { WORKERS, POLICY_DEFS, DAYS, BINS, TIME_STUDY, getShelf, createGame, configure, startShift, getOrder, doWork, chooseEvent, nextShift, reportText, comparePolicies, serializeState, deserializeState } from './engine.js?v=3';
-import { productIcon, crewPortrait, warehouseScene, packagePreview } from './visuals.js?v=3';
+import { productIcon, crewPortrait, warehouseScene, packagePreview } from './visuals.js?v=3.3';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const main = $('#main');
@@ -97,11 +97,11 @@ function plan() {
   const target = game.policies.incentive==='ratchet' ? Math.max(d.target,game.capabilities.ratchetTarget) : d.target;
   return progress()+heading(`${dayNames[game.day]} / Plan the shift`, d.title, d.brief, `01 / PLAN`)+`
     <div class="two-column"><div class="stack"><section class="panel"><div class="panel-head"><h2>Your operating rules</h2><button class="button text small" data-action="study">Open time study ↗</button></div>${policyFields()}${locked.length?`<p class="locked-note">Coming later: ${locked.map(p=>esc(p.label)).join(' · ')}. New decisions open as the week gets more complicated.</p>`:''}</section>${game.day>=1?crew():''}<div class="action-bar"><p class="hint">Once the shift opens, work under this plan. Revise it tomorrow. Reading and discussion never use shift time.</p><button class="button primary" data-action="start-shift">Open the shift ${arrow}</button></div></div>
-    <aside class="stack side-stack sticky-side"><section class="panel contract"><span class="eyebrow">TODAY'S BRIEF</span><span class="big-number">${target}<span style="font-size:18px;letter-spacing:0"> / 6</span></span><strong>good orders, on time</strong><p class="hint">${d.budget} simulated minutes for this batch, including setup, rework, and interruptions. The moving-target policy can raise the quota after strong performance.</p><div class="divider"></div><span class="eyebrow">${esc(d.focus)}</span></section><section class="panel"><div class="panel-head"><h3>The floor</h3></div>${smallFloor()}</section>${wellbeing()}</aside></div>`;
+    <aside class="stack side-stack sticky-side"><section class="panel contract"><span class="eyebrow">TODAY'S BRIEF</span><span class="big-number">${target}<span class="brief-denominator"> / 6</span></span><strong>good orders, on time</strong><p class="hint">${d.budget} simulated minutes for this batch, including setup, rework, and interruptions. The moving-target policy can raise the quota after strong performance.</p><div class="divider"></div><span class="eyebrow">${esc(d.focus)}</span></section><section class="panel"><div class="panel-head"><h3>The floor</h3></div>${smallFloor()}</section>${wellbeing()}</aside></div>`;
 }
 function strip() {
   const s=game.shift;
-  return `<div class="metrics-strip" aria-label="Current shift metrics"><div class="metric"><strong>${s.onTime}<span style="font-size:13px;color:var(--muted)"> / ${s.target}</span></strong><small>Good orders on time</small></div><div class="metric"><strong class="${s.minutes>s.budget?'red':''}">${fmt(s.minutes)}<span style="font-size:12px;color:var(--muted)"> / ${s.budget}</span></strong><small>Simulated minutes used</small></div><div class="metric"><strong>${s.defects}</strong><small>Defects sent out</small></div><div class="metric"><strong>${fmt(game.metrics.fatigue,0)}<span style="font-size:12px;color:var(--muted)"> / 100</span></strong><small>Crew fatigue</small></div></div>`;
+  return `<div class="metrics-strip" aria-label="Current shift metrics"><div class="metric"><strong>${s.onTime}<span class="metric-denominator"> / ${s.target}</span></strong><small>Good orders on time</small></div><div class="metric"><strong class="${s.minutes>s.budget?'red':''}">${fmt(s.minutes)}<span class="metric-denominator"> / ${s.budget}</span></strong><small>Simulated minutes used</small></div><div class="metric"><strong>${s.defects}</strong><small>Defects sent out</small></div><div class="metric"><strong>${fmt(game.metrics.fatigue,0)}<span class="metric-denominator"> / 100</span></strong><small>Crew fatigue</small></div></div>`;
 }
 function ledger() {
   const actions=game.shift.actions;
@@ -293,7 +293,9 @@ document.addEventListener('submit',event=>{
 });
 document.addEventListener('keydown',event=>{
   if(!event.target.matches('[data-bin]'))return;
-  const dirs={ArrowRight:1,ArrowLeft:-1,ArrowDown:3,ArrowUp:-3};if(!(event.key in dirs))return;
+  const grid=event.target.closest('.bin-grid');
+  const columns=getComputedStyle(grid).gridTemplateColumns.split(/\s+/).length;
+  const dirs={ArrowRight:1,ArrowLeft:-1,ArrowDown:columns,ArrowUp:-columns};if(!(event.key in dirs))return;
   event.preventDefault();const list=[...document.querySelectorAll('[data-bin]')];const index=list.indexOf(event.target);list[(index+dirs[event.key]+list.length)%list.length].focus();
 });
 window.addEventListener('hashchange',()=>{if(location.hash && !location.hash.startsWith('#run='))return;game=null;invalidLink=false;comparison=null;input=blankInput();loadLink();render();});

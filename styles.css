@@ -4442,3 +4442,21 @@ dialog::backdrop {
   }
 
 }
+
+/* Keep the frequent four-column replay readable on a phone. */
+@media screen and (max-width: 600px) {
+  #comparison-output table {
+    table-layout: fixed;
+    min-width: 280px;
+  }
+  #comparison-output th, #comparison-output td {
+    min-width: 0;
+    padding: 11px 8px;
+  }
+  #comparison-output th:first-child { width: 35%; }
+  #comparison-output th.num {
+    width: 21.666%;
+    white-space: normal;
+    font-size: .875rem;
+  }
+}
